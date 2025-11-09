@@ -4,32 +4,27 @@ import { StatusBar } from "expo-status-bar";
 import React from "react";
 import { Image, StyleSheet, Text, TouchableOpacity, View } from "react-native";
 
-export default function Layout() {
+export default function AdminLayout() {
   const pathname = usePathname();
   const router = useRouter();
 
-  const hideLayout =
-    pathname === "/login" || 
-    pathname === "/signup" || 
-    pathname === "/" || 
-    pathname.startsWith("/admin");
+  // Hide header and footer on login page
+  const isLoginPage = pathname === "/admin/adminLogin";
 
   const navItems = [
-    { name: "Home", route: "/dashboard", icon: "home-outline" },
-    { name: "Services", route: "/services", icon: "cut-outline" },
-    { name: "Hot Deals", route: "/promodeals", icon: "flame-outline" },
-    { name: "Bookings", route: "/booking", icon: "calendar-outline" },
-    { name: "Profile", route: "/profile", icon: "person-circle-outline" },
+    { name: "Dashboard", route: "/admin/AdminDashboard", icon: "grid-outline" },
+    { name: "Services", route: "/admin/ManageServices", icon: "cut-outline" },
+    { name: "Logout", route: "/admin/adminLogin", icon: "log-out-outline" },
   ];
 
   return (
     <View style={styles.container}>
       {/* 🌸 Header */}
-      {!hideLayout && (
+      {!isLoginPage && (
         <View style={styles.header}>
           <View style={styles.headerInner}>
-            <Image source={require("../assets/logo.png")} style={styles.logo} />
-            <Text style={styles.appName}>Schedly</Text>
+            <Image source={require("../../assets/logo.png")} style={styles.logo} />
+            <Text style={styles.appName}>Schedly Admin</Text>
           </View>
         </View>
       )}
@@ -45,7 +40,7 @@ export default function Layout() {
       </View>
 
       {/* 🌙 Bottom Navigation */}
-      {!hideLayout && (
+      {!isLoginPage && (
         <View style={styles.navbar}>
           {navItems.map((item) => {
             const isActive = pathname === item.route;
@@ -53,17 +48,17 @@ export default function Layout() {
               <TouchableOpacity
                 key={item.route}
                 style={styles.navItem}
-                onPress={() => router.push(item.route)}
+                onPress={() => router.push(item.route as any)}
               >
                 <Ionicons
-                  name={item.icon}
+                  name={item.icon as any}
                   size={22}
-                  color={isActive ? "#6C63FF" : "#B0A8FF"}
+                  color={isActive ? "#6B46C1" : "#B0A8FF"}
                 />
                 <Text
                   style={[
                     styles.navText,
-                    { color: isActive ? "#6C63FF" : "#B0A8FF" },
+                    { color: isActive ? "#6B46C1" : "#B0A8FF" },
                   ]}
                 >
                   {item.name}
@@ -85,10 +80,9 @@ const styles = StyleSheet.create({
     backgroundColor: "#F9F7FF",
   },
   header: {
-    backgroundColor: "#6C63FF",
+    backgroundColor: "#6B46C1",
     paddingTop: 50,
     paddingBottom: 18,
-
     shadowColor: "#000",
     shadowOpacity: 0.15,
     shadowRadius: 6,
@@ -124,7 +118,7 @@ const styles = StyleSheet.create({
     paddingVertical: 10,
     height: 65,
     elevation: 8,
-    shadowColor: "#6C63FF",
+    shadowColor: "#6B46C1",
     shadowOpacity: 0.1,
     shadowOffset: { width: 0, height: -2 },
   },

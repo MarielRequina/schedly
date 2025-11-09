@@ -31,6 +31,10 @@ export default function Login() {
       <TouchableOpacity onPress={() => router.push("/signup")}>
         <Text style={styles.link}>Don't have an account? Sign up</Text>
       </TouchableOpacity>
+
+      <TouchableOpacity onPress={() => router.push("/")} style={styles.backButton}>
+        <Text style={styles.backText}>Back to Home</Text>
+      </TouchableOpacity>
     </View>
   );
 }
@@ -42,4 +46,6 @@ const styles = StyleSheet.create({
   button: { backgroundColor: "#6B46C1", paddingVertical: 12, paddingHorizontal: 40, borderRadius: 999 },
   buttonText: { color: "#fff", fontWeight: "bold" },
   link: { marginTop: 15, color: "#6B46C1" },
+  backButton: { marginTop: 10 },
+  backText: { color: "#6B46C1", textDecorationLine: "underline", fontSize: 14 },
 });

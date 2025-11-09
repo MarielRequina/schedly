@@ -1,17 +1,17 @@
-import React, { useEffect, useState } from "react";
-import { View, Text, TouchableOpacity, FlatList, StyleSheet, Alert, ActivityIndicator } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
-import { db } from "../constants/firebaseConfig";
 import {
-  collection,
-  onSnapshot,
-  doc,
-  updateDoc,
-  getDoc,
   addDoc,
-  query,
+  collection,
+  doc,
+  getDoc,
+  onSnapshot,
   orderBy,
+  query,
+  updateDoc,
 } from "firebase/firestore";
+import React, { useEffect, useState } from "react";
+import { Alert, FlatList, StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import { db } from "../../constants/firebaseConfig";
 
 interface Booking {
   id: string;
@@ -24,7 +24,6 @@ interface Booking {
 
 export default function AdminDashboard() {
   const [bookings, setBookings] = useState<Booking[]>([]);
-  const [loading, setLoading] = useState(true);
 
   // 🧭 Real-time bookings
   useEffect(() => {
@@ -34,7 +33,6 @@ export default function AdminDashboard() {
       const unsubscribe = onSnapshot(q, async (snapshot) => {
         if (snapshot.empty) {
           setBookings([]);
-          setLoading(false);
           return;
         }
 
@@ -65,13 +63,11 @@ export default function AdminDashboard() {
         );
 
         setBookings(list);
-        setLoading(false);
       });
 
       return unsubscribe;
     } catch (error) {
       console.error("Error fetching bookings:", error);
-      setLoading(false);
     }
   }, []);
 
@@ -122,18 +118,9 @@ export default function AdminDashboard() {
   };
 
   // 🖼️ UI
-  if (loading) {
-    return (
-      <View style={styles.center}>
-        <ActivityIndicator size="large" color="#6B46C1" />
-        <Text style={{ color: "#6B46C1", marginTop: 10 }}>Loading bookings...</Text>
-      </View>
-    );
-  }
-
   return (
     <View style={styles.container}>
-      <Text style={styles.header}>Manage Bookings</Text>
+      <Text style={styles.header}>Manage Appointments</Text>
 
       {bookings.length === 0 ? (
         <Text style={{ textAlign: "center", color: "#777", marginTop: 20 }}>No bookings yet.</Text>
@@ -224,5 +211,4 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
-  center: { flex: 1, justifyContent: "center", alignItems: "center" },
 });

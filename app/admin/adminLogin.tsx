@@ -16,7 +16,7 @@ export default function AdminLogin() {
 
   const handleLogin = () => {
     if (email === "admin@schedly.com" && password === "admin123") {
-      router.push("/adminDashboard");
+      router.push("/admin/AdminDashboard");
     } else {
       Alert.alert("Access Denied", "Invalid admin credentials");
     }
@@ -49,9 +49,9 @@ export default function AdminLogin() {
 
       <TouchableOpacity
         style={styles.switchButton}
-        onPress={() => router.push("/index")}
+        onPress={() => router.push("/")}
       >
-        <Text style={styles.switchText}>Login as Customer</Text>
+        <Text style={styles.switchText}>Back to Home</Text>
       </TouchableOpacity>
     </View>
   );

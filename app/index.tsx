@@ -6,21 +6,14 @@ export default function IndexScreen() {
   const router = useRouter();
   const pathname = usePathname();
 
-  // Detect if currently in admin login route
-  const isAdmin = pathname === "/adminLogin";
-
   return (
     <View style={styles.container}>
       {/* Top-right toggle button */}
       <TouchableOpacity
         style={styles.topButton}
-        onPress={() =>
-          router.push(isAdmin ? "/login" : "/adminLogin")
-        }
+        onPress={() => router.push("/admin/adminLogin")}
       >
-        <Text style={styles.topButtonText}>
-          {isAdmin ? "Customer" : "Admin"}
-        </Text>
+        <Text style={styles.topButtonText}>Admin</Text>
       </TouchableOpacity>
 
       {/* App intro */}

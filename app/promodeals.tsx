@@ -10,66 +10,7 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
-
-interface Promo {
-  id: string;
-  title: string;
-  description: string;
-  discount: string;
-  image: { uri: string };
-  badge?: string;
-}
-
-const promoDeals: Promo[] = [
-  {
-    id: "1",
-    title: "30% Off Hair Rebond",
-    description: "Get silky, straight hair with our best-selling treatment!",
-    discount: "₱1,750 → ₱1,225",
-    badge: "HOT DEAL",
-    image: { uri: "https://cdn.shopify.com/s/files/1/1412/4580/files/Keratin_vs_Rebond_Salon_480x480.jpg?v=1686244964" },
-  },
-  {
-    id: "2",
-    title: "Free Manicure with Haircut",
-    description: "Book any haircut and get a free manicure session.",
-    discount: "Save ₱250",
-    badge: "BUNDLE",
-    image: { uri: "https://michmylnails.net/wp-content/uploads/2022/08/Nail-Salon-Slider-Banner.jpg" },
-  },
-  {
-    id: "3",
-    title: "Holiday Glow Makeup",
-    description: "Perfect your festive look with a 25% off on all makeup sessions.",
-    discount: "₱2,000 → ₱1,500",
-    badge: "LIMITED",
-    image: { uri: "https://images.fresha.com/lead-images/placeholders/beauty-salon-66.jpg?class=venue-gallery-large" },
-  },
-  {
-    id: "5",
-    title: "Hair Color Treatment",
-    description: "Full color treatment with free hair mask and styling!",
-    discount: "₱1,200 → ₱850",
-    badge: "NEW",
-    image: { uri: "https://img1.wsimg.com/isteam/ip/10ce9f98-419e-47a5-bf54-acfaaf041f34/Why%20Do%20Salons%20Wash%20Your%20Hair%20After%20Coloring.jpeg" },
-  },
-  {
-    id: "6",
-    title: "Weekend Relax Package",
-    description: "Hair spa, scalp massage, and deep conditioning treatment.",
-    discount: "₱1,800 → ₱1,200",
-    badge: "WEEKENDS",
-    image: { uri: "https://media.istockphoto.com/id/500135894/photo/clients-hair-is-being-reconditioned.jpg?s=612x612&w=0&k=20&c=Vy_EE5oGrMn_YWiJ8V27sOB0HdwAie_QqdnEJtWV1F0=" },
-  },
-  {
-    id: "7",
-    title: "Student Special Cut",
-    description: "Show your student ID and get 40% off any haircut service!",
-    discount: "From ₱250 → ₱150",
-    badge: "STUDENT",
-    image: { uri: "https://images.unsplash.com/photo-1493256338651-d82f7acb2b38?auto=format&fit=crop&w=800&q=80" },
-  },
-];
+import { Promo, getPromos } from "../constants/servicesData";
 
 // Animated Promo Card Component
 const AnimatedPromoCard = ({ item, index, isFavorite, onToggleFavorite }: { item: Promo; index: number; isFavorite: boolean; onToggleFavorite: (id: string) => void }) => {
@@ -242,6 +183,7 @@ export default function PromoDealsScreen() {
   const [headerSlide] = useState(new Animated.Value(-30));
   const [pulseAnim] = useState(new Animated.Value(1));
   const [favorites, setFavorites] = useState<Set<string>>(new Set());
+  const [promoDeals, setPromoDeals] = useState<Promo[]>(getPromos());
 
   const toggleFavorite = (id: string) => {
     setFavorites(prev => {
