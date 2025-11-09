@@ -1,27 +1,27 @@
-import React, { useEffect, useState } from "react";
-import {
-  View,
-  Text,
-  TouchableOpacity,
-  FlatList,
-  Modal,
-  TextInput,
-  StyleSheet,
-  Alert,
-  ActivityIndicator,
-} from "react-native";
 import { Ionicons } from "@expo/vector-icons";
-import { db, auth } from "../constants/firebaseConfig";
 import {
-  collection,
   addDoc,
-  getDocs,
+  collection,
   deleteDoc,
   doc,
-  updateDoc,
+  getDocs,
   query,
+  updateDoc,
   where,
 } from "firebase/firestore";
+import React, { useEffect, useState } from "react";
+import {
+  ActivityIndicator,
+  Alert,
+  FlatList,
+  Modal,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
+} from "react-native";
+import { auth, db } from "../constants/firebaseConfig";
 
 interface Booking {
   id?: string;

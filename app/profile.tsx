@@ -1,21 +1,22 @@
-import React, { useState, useEffect } from "react";
-import {
-  View,
-  Text,
-  Image,
-  TouchableOpacity,
-  TextInput,
-  StyleSheet,
-  Alert,
-  ActivityIndicator,
-  ScrollView,
-} from "react-native";
-import * as ImagePicker from "expo-image-picker";
 import { Ionicons } from "@expo/vector-icons";
-import { db, auth } from "../constants/firebaseConfig";
-import { doc, getDoc, setDoc } from "firebase/firestore";
-import { signOut, User } from "firebase/auth";
+import * as ImagePicker from "expo-image-picker";
 import { useRouter } from "expo-router";
+import { signOut, User } from "firebase/auth";
+import { doc, getDoc, setDoc } from "firebase/firestore";
+import React, { useEffect, useState } from "react";
+import {
+  ActivityIndicator,
+  Alert,
+  Image,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
+} from "react-native";
+import { LinearGradient as ExpoLinearGradient } from 'expo-linear-gradient';
+import { auth, db } from "../constants/firebaseConfig";
 
 export default function ProfileScreen() {
   const router = useRouter();
@@ -31,7 +32,6 @@ export default function ProfileScreen() {
   
   const [name, setName] = useState(displayName);
   const [image, setImage] = useState<string | null>(null);
-  const [loading, setLoading] = useState(true);
   const [isEditing, setIsEditing] = useState(false);
 
   // 🟣 Fetch user profile from Firestore
@@ -46,8 +46,6 @@ export default function ProfileScreen() {
       }
     } catch (error) {
       console.error("Error fetching profile:", error);
-    } finally {
-      setLoading(false);
     }
   };
 
@@ -105,229 +103,360 @@ export default function ProfileScreen() {
     setIsEditing(!isEditing);
   };
 
-  if (loading) {
-    return (
-      <View style={[styles.container, { justifyContent: "center" }]}>
-        <ActivityIndicator size="large" color="#A06CD5" />
-      </View>
-    );
-  }
-
   return (
-    <ScrollView style={styles.container}>
-      <View style={styles.header}>
-        <Text style={styles.title}>Profile</Text>
-        <TouchableOpacity onPress={toggleEdit} style={styles.editButton}>
-          <Ionicons 
-            name={isEditing ? "close" : "pencil"} 
-            size={24} 
-            color={isEditing ? "#FF3B30" : "#4B2A7B"} 
-          />
-        </TouchableOpacity>
+    <View style={styles.container}>
+      {/* Header Background */}
+      <View style={styles.headerBackground}>
+        <ExpoLinearGradient
+          colors={['#A78BFA', '#8B5CF6']}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+          style={styles.gradientBackground}
+        />
       </View>
 
-      <View style={styles.profileSection}>
-        <TouchableOpacity onPress={pickImage} style={styles.imageContainer}>
-          {image ? (
-            <Image source={{ uri: image }} style={styles.image} />
+      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollContent}>
+        {/* Header */}
+        <View style={styles.header}>
+          <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
+            <Ionicons name="arrow-back" size={24} color="#fff" />
+          </TouchableOpacity>
+          <View style={styles.headerSpacer} />
+        </View>
+
+        {/* Profile Card */}
+        <View style={styles.profileCard}>
+          {/* Profile Image */}
+          {isEditing ? (
+            <TouchableOpacity 
+              onPress={pickImage} 
+              style={styles.imageContainer}
+              activeOpacity={0.8}
+            >
+              {image ? (
+                <View style={styles.imageWrapper}>
+                  <Image source={{ uri: image }} style={styles.profileImage} />
+                  <View style={styles.cameraOverlay}>
+                    <Ionicons name="camera" size={20} color="#fff" />
+                  </View>
+                </View>
+              ) : (
+                <View style={styles.profileImagePlaceholder}>
+                  <Ionicons name="person" size={40} color="#fff" />
+                  <View style={styles.cameraOverlay}>
+                    <Ionicons name="camera" size={20} color="#fff" />
+                  </View>
+                </View>
+              )}
+            </TouchableOpacity>
           ) : (
-            <View style={styles.placeholder}>
-              <Ionicons name="person" size={50} color="#fff" />
-              {isEditing && (
-                <View style={styles.cameraIcon}>
-                  <Ionicons name="camera" size={16} color="#fff" />
+            <View style={styles.imageContainer}>
+              {image ? (
+                <Image source={{ uri: image }} style={styles.profileImage} />
+              ) : (
+                <View style={styles.profileImagePlaceholder}>
+                  <Ionicons name="person" size={40} color="#fff" />
                 </View>
               )}
             </View>
           )}
-        </TouchableOpacity>
 
-        <Text style={styles.userName}>{name}</Text>
-        <Text style={styles.userEmail}>{userEmail}</Text>
-      </View>
+          {/* User Info */}
+          <Text style={styles.userName}>{name}</Text>
+          <Text style={styles.userEmail}>{userEmail}</Text>
 
-      <View style={styles.formSection}>
-        <Text style={styles.sectionTitle}>Account Information</Text>
-        
-        <View style={styles.inputGroup}>
-          <Text style={styles.inputLabel}>Display Name</Text>
-          {isEditing ? (
-            <TextInput
-              style={styles.input}
-              placeholder="Enter your name"
-              placeholderTextColor="#999"
-              value={name}
-              onChangeText={setName}
-              autoCapitalize="words"
-            />
-          ) : (
-            <Text style={styles.infoText}>{name}</Text>
-          )}
+          {/* Edit Profile Button */}
+          <TouchableOpacity 
+            style={styles.editProfileButton} 
+            onPress={toggleEdit}
+            activeOpacity={0.8}
+          >
+            <Ionicons name="pencil" size={16} color="#8B5CF6" />
+            <Text style={styles.editProfileText}>Edit Profile</Text>
+          </TouchableOpacity>
+
+          {/* Stats */}
+          <View style={styles.statsContainer}>
+            <View style={styles.statItem}>
+              <Text style={styles.statValue}>0</Text>
+              <Text style={styles.statLabel}>Bookings</Text>
+            </View>
+            <View style={styles.statDivider} />
+            <View style={styles.statItem}>
+              <Text style={styles.statValue}>0</Text>
+              <Text style={styles.statLabel}>Favorites</Text>
+            </View>
+            <View style={styles.statDivider} />
+            <View style={styles.statItem}>
+              <Text style={styles.statValue}>0</Text>
+              <Text style={styles.statLabel}>Reviews</Text>
+            </View>
+          </View>
         </View>
 
-        <View style={styles.inputGroup}>
-          <Text style={styles.inputLabel}>Email</Text>
-          <Text style={[styles.infoText, { color: '#666' }]}>{userEmail}</Text>
-        </View>
-      </View>
+        {/* Edit Form */}
+        {isEditing && (
+          <View style={styles.editSection}>
+            <View style={styles.inputGroup}>
+              <Text style={styles.inputLabel}>Display Name</Text>
+              <TextInput
+                style={styles.input}
+                placeholder="Enter your name"
+                placeholderTextColor="#999"
+                value={name}
+                onChangeText={setName}
+                autoCapitalize="words"
+              />
+            </View>
 
-      {isEditing ? (
-        <TouchableOpacity 
-          style={[styles.button, styles.saveButton]} 
-          onPress={handleSave}
-        >
-          <Text style={styles.buttonText}>Save Changes</Text>
-        </TouchableOpacity>
-      ) : (
-        <TouchableOpacity 
-          style={[styles.button, styles.logoutButton]} 
-          onPress={handleLogout}
-        >
-          <Ionicons name="log-out-outline" size={20} color="#fff" />
-          <Text style={[styles.buttonText, { marginLeft: 8 }]}>Log Out</Text>
-        </TouchableOpacity>
-      )}
-    </ScrollView>
+            <View style={styles.inputGroup}>
+              <Text style={styles.inputLabel}>Email</Text>
+              <View style={styles.disabledInput}>
+                <Text style={styles.disabledText}>{userEmail}</Text>
+                <Ionicons name="lock-closed" size={16} color="#999" />
+              </View>
+            </View>
+
+            <TouchableOpacity 
+              style={styles.saveButton} 
+              onPress={handleSave}
+              activeOpacity={0.8}
+            >
+              <Text style={styles.saveButtonText}>Save Changes</Text>
+            </TouchableOpacity>
+          </View>
+        )}
+
+        {/* Logout Button */}
+        {!isEditing && (
+          <TouchableOpacity 
+            style={styles.logoutButton} 
+            onPress={handleLogout}
+            activeOpacity={0.8}
+          >
+            <Ionicons name="log-out-outline" size={20} color="#FF3B30" />
+            <Text style={styles.logoutText}>Log Out</Text>
+          </TouchableOpacity>
+        )}
+
+        <View style={{ height: 40 }} />
+      </ScrollView>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#F9F7FF",
+    backgroundColor: '#F5F7FA',
+  },
+  headerBackground: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    height: 200,
+  },
+  gradientBackground: {
+    flex: 1,
+  },
+  scrollContent: {
+    paddingTop: 60,
   },
   header: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    padding: 20,
-    paddingTop: 50,
+    paddingHorizontal: 20,
+    marginBottom: 40,
+  },
+  backButton: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  headerSpacer: {
+    width: 40,
+  },
+  profileCard: {
     backgroundColor: '#fff',
-    borderBottomLeftRadius: 20,
-    borderBottomRightRadius: 20,
+    marginHorizontal: 20,
+    borderRadius: 20,
+    padding: 24,
+    alignItems: 'center',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
     shadowRadius: 8,
     elevation: 3,
   },
-  title: {
-    fontSize: 24,
-    fontWeight: '700',
-    color: '#4B2A7B',
-  },
-  editButton: {
-    padding: 8,
-  },
-  profileSection: {
-    alignItems: 'center',
-    padding: 20,
-    backgroundColor: '#fff',
-    margin: 15,
-    borderRadius: 15,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 8,
-    elevation: 2,
-  },
   imageContainer: {
-    marginBottom: 15,
+    marginBottom: 16,
   },
-  image: {
-    width: 120,
-    height: 120,
-    borderRadius: 60,
-    borderWidth: 3,
-    borderColor: '#E0A100',
-  },
-  placeholder: {
-    width: 120,
-    height: 120,
-    borderRadius: 60,
-    backgroundColor: '#A06CD5',
-    justifyContent: 'center',
-    alignItems: 'center',
+  imageWrapper: {
     position: 'relative',
   },
-  cameraIcon: {
+  profileImage: {
+    width: 100,
+    height: 100,
+    borderRadius: 50,
+    borderWidth: 4,
+    borderColor: '#fff',
+  },
+  profileImagePlaceholder: {
+    width: 100,
+    height: 100,
+    borderRadius: 50,
+    backgroundColor: '#8B5CF6',
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 4,
+    borderColor: '#fff',
+  },
+  cameraOverlay: {
     position: 'absolute',
-    bottom: 5,
-    right: 5,
-    backgroundColor: '#4B2A7B',
-    borderRadius: 12,
-    padding: 4,
+    bottom: 0,
+    right: 0,
+    backgroundColor: '#8B5CF6',
+    borderRadius: 15,
+    padding: 6,
+    borderWidth: 2,
+    borderColor: '#fff',
   },
   userName: {
     fontSize: 22,
     fontWeight: '700',
-    color: '#333',
-    marginTop: 10,
+    color: '#1F2937',
+    marginBottom: 4,
   },
   userEmail: {
     fontSize: 14,
-    color: '#777',
-    marginTop: 5,
+    color: '#6B7280',
+    marginBottom: 16,
   },
-  formSection: {
+  editProfileButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#F5F3FF',
+    paddingHorizontal: 20,
+    paddingVertical: 10,
+    borderRadius: 20,
+    marginBottom: 24,
+    gap: 6,
+  },
+  editProfileText: {
+    fontSize: 14,
+    color: '#8B5CF6',
+    fontWeight: '600',
+  },
+  statsContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-around',
+    width: '100%',
+    paddingTop: 20,
+    borderTopWidth: 1,
+    borderTopColor: '#F3F4F6',
+  },
+  statItem: {
+    alignItems: 'center',
+    flex: 1,
+  },
+  statValue: {
+    fontSize: 20,
+    fontWeight: '700',
+    color: '#1F2937',
+    marginBottom: 4,
+  },
+  statLabel: {
+    fontSize: 12,
+    color: '#9CA3AF',
+    fontWeight: '500',
+  },
+  statDivider: {
+    width: 1,
+    height: 40,
+    backgroundColor: '#E5E7EB',
+  },
+  editSection: {
     backgroundColor: '#fff',
-    margin: 15,
+    marginHorizontal: 20,
+    marginTop: 16,
+    borderRadius: 20,
     padding: 20,
-    borderRadius: 15,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
+    shadowOpacity: 0.1,
     shadowRadius: 8,
-    elevation: 2,
-  },
-  sectionTitle: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#4B2A7B',
-    marginBottom: 15,
-    paddingBottom: 8,
-    borderBottomWidth: 1,
-    borderBottomColor: '#F0EBFF',
+    elevation: 3,
   },
   inputGroup: {
-    marginBottom: 20,
+    marginBottom: 16,
   },
   inputLabel: {
     fontSize: 14,
-    color: '#666',
+    fontWeight: '600',
+    color: '#374151',
     marginBottom: 8,
   },
   input: {
-    backgroundColor: '#F9F7FF',
-    borderRadius: 10,
-    padding: 12,
-    fontSize: 16,
-    color: '#333',
-    borderWidth: 1,
-    borderColor: '#E0D4FF',
-  },
-  infoText: {
-    fontSize: 16,
-    color: '#333',
-    paddingVertical: 12,
-  },
-  button: {
-    flexDirection: 'row',
-    justifyContent: 'center',
-    alignItems: 'center',
+    backgroundColor: '#F9FAFB',
     borderRadius: 12,
-    paddingVertical: 15,
-    marginHorizontal: 15,
-    marginBottom: 20,
+    padding: 14,
+    fontSize: 16,
+    color: '#1F2937',
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+  },
+  disabledInput: {
+    backgroundColor: '#F3F4F6',
+    borderRadius: 12,
+    padding: 14,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+  },
+  disabledText: {
+    fontSize: 16,
+    color: '#9CA3AF',
   },
   saveButton: {
-    backgroundColor: '#4B2A7B',
+    backgroundColor: '#8B5CF6',
+    borderRadius: 12,
+    paddingVertical: 16,
+    alignItems: 'center',
+    marginTop: 8,
+    shadowColor: '#8B5CF6',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 4,
+  },
+  saveButtonText: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: '700',
   },
   logoutButton: {
-    backgroundColor: '#FF3B30',
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#fff',
+    marginHorizontal: 20,
+    marginTop: 16,
+    borderRadius: 12,
+    paddingVertical: 16,
+    borderWidth: 1,
+    borderColor: '#FEE2E2',
+    gap: 8,
   },
-  buttonText: {
-    color: '#fff',
+  logoutText: {
+    color: '#FF3B30',
     fontSize: 16,
     fontWeight: '600',
   },

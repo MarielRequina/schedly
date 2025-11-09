@@ -1,23 +1,23 @@
 // constants/firebaseConfig.ts
-import { initializeApp, getApps, getApp, FirebaseApp } from "firebase/app";
-import {
-  initializeAuth,
-  getReactNativePersistence,
-  getAuth,
-  Auth,
-} from "firebase/auth";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import { getFirestore, Firestore } from "firebase/firestore";
+import { FirebaseApp, getApp, getApps, initializeApp } from "firebase/app";
+import {
+  Auth,
+  getAuth,
+  getReactNativePersistence,
+  initializeAuth,
+} from "firebase/auth";
+import { Firestore, getFirestore } from "firebase/firestore";
 
 // ✅ Your Firebase configuration
 const firebaseConfig = {
-  apiKey: "AIzaSyDVOKS-j44iZRzwqOIuD0S5qPYAeYt-_3k",
-  authDomain: "schedly-934a5.firebaseapp.com",
-  projectId: "schedly-934a5",
-  storageBucket: "schedly-934a5.appspot.com",
-  messagingSenderId: "351258055167",
-  appId: "1:351258055167:web:de9fbc93449b2d098817ca",
-  measurementId: "G-RHN7TYT2QV",
+   apiKey: "AIzaSyAG0i3pa6hWDaW8a8-QpcfXKmECdYnvNMI",
+  authDomain: "schedly-87272.firebaseapp.com",
+  projectId: "schedly-87272",
+  storageBucket: "schedly-87272.firebasestorage.app",
+  messagingSenderId: "281484836803",
+  appId: "1:281484836803:web:eda10a420dc05cdc02c776",
+  measurementId: "G-10NMEEGVK9",
 };
 
 // ✅ Initialize Firebase App (only once)
@@ -43,3 +43,4 @@ try {
 const db: Firestore = getFirestore(app);
 
 export { app, auth, db };
+

@@ -1,8 +1,8 @@
-import React from "react";
-import { View, Text, Image, StyleSheet, TouchableOpacity } from "react-native";
-import { Stack, usePathname, useRouter } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
+import { Stack, usePathname, useRouter } from "expo-router";
 import { StatusBar } from "expo-status-bar";
+import React from "react";
+import { Image, StyleSheet, Text, TouchableOpacity, View } from "react-native";
 
 export default function Layout() {
   const pathname = usePathname();
