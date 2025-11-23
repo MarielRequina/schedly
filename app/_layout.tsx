@@ -14,7 +14,13 @@ export default function Layout() {
     pathname === "/" || 
     pathname.startsWith("/admin");
 
-  const navItems = [
+  type NavItem = {
+    name: string;
+    route: "/dashboard" | "/services" | "/promodeals" | "/booking" | "/profile";
+    icon: keyof typeof Ionicons.glyphMap;
+  };
+
+  const navItems: NavItem[] = [
     { name: "Home", route: "/dashboard", icon: "home-outline" },
     { name: "Services", route: "/services", icon: "cut-outline" },
     { name: "Hot Deals", route: "/promodeals", icon: "flame-outline" },
@@ -24,8 +30,8 @@ export default function Layout() {
 
   return (
     <View style={styles.container}>
-      {/* 🌸 Header */}
-      {!hideLayout && (
+      {/* 🌸 Header (hidden on Dashboard) */}
+      {!hideLayout && pathname !== "/dashboard" && (
         <View style={styles.header}>
           <View style={styles.headerInner}>
             <Image source={require("../assets/logo.png")} style={styles.logo} />
@@ -44,11 +50,12 @@ export default function Layout() {
         />
       </View>
 
-      {/* 🌙 Bottom Navigation */}
-      {!hideLayout && (
+      {/* 🌙 Bottom Navigation (hidden on Dashboard) */}
+      {!hideLayout && pathname !== "/dashboard" && (
         <View style={styles.navbar}>
           {navItems.map((item) => {
-            const isActive = pathname === item.route;
+            const isActive = pathname === item.route ||
+              (pathname === '/' && item.route === '/dashboard');
             return (
               <TouchableOpacity
                 key={item.route}

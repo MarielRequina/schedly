@@ -1,9 +1,11 @@
+
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import { doc, getDoc } from "firebase/firestore";
 import React, { useEffect, useState } from "react";
 import {
   Animated,
+  Dimensions,
   FlatList,
   Image,
   Modal,
@@ -15,6 +17,7 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
+
 import { auth, db } from "../constants/firebaseConfig";
 
 // Animated Button Component with Touch Effects
@@ -53,6 +56,7 @@ const AnimatedButton = ({ children, onPress, style, activeOpacity = 0.85 }: any)
 
 export default function Dashboard() {
   const router = useRouter();
+
   const [userName, setUserName] = useState("Guest");
   const [modalVisible, setModalVisible] = useState(false);
   const [scrollY, setScrollY] = useState(0);
@@ -61,6 +65,8 @@ export default function Dashboard() {
   const [scaleAnim] = useState(new Animated.Value(0.9));
   const [heartScale] = useState(new Animated.Value(1));
   const [currentPromoIndex, setCurrentPromoIndex] = useState(0);
+
+  const { height: screenHeight } = Dimensions.get("window");
 
   const [notifications, setNotifications] = useState([
     {
@@ -214,7 +220,7 @@ export default function Dashboard() {
 
   return (
     <>
-      <StatusBar barStyle="dark-content" backgroundColor="#FFFFFF" />
+      <StatusBar barStyle="light-content" translucent backgroundColor="transparent" />
 
       <ScrollView
         style={styles.container}
@@ -222,115 +228,107 @@ export default function Dashboard() {
         onScroll={handleScroll}
         scrollEventThrottle={16}
       >
-        {/* Animated Header */}
-        <Animated.View
-          style={[
-            styles.headerGradient,
-            {
-              opacity: headerOpacity,
-              elevation: headerElevation,
-              shadowOpacity: scrollY > 50 ? 0.1 : 0,
-            },
-          ]}
-        >
-          <View style={styles.header}>
-            <Animated.View
-              style={[
-                styles.headerLeft,
-                {
-                  opacity: fadeAnim,
-                  transform: [{ translateY: slideAnim }],
-                },
-              ]}
-            >
-              <Text style={styles.welcomeText}>Welcome back,</Text>
-              <Text style={styles.userName}>{userName}</Text>
-            </Animated.View>
-            <AnimatedButton
-              style={styles.notificationButton}
+        {/* Full-screen Hero Image */}
+        <View style={[styles.heroSection, { height: screenHeight }]}>
+          <Image
+            source={{ uri: "https://5.imimg.com/data5/SELLER/Default/2022/9/XX/HK/TH/35954604/salon-interior-designing-500x500.jpg" }}
+            style={styles.heroImage}
+          />
+          {/* Top nav overlay (local to dashboard) */}
+          <View style={styles.topNavRow}>
+            <TouchableOpacity onPress={() => router.push('/profile')} activeOpacity={0.8} style={styles.topNavProfileLeft}>
+              <Ionicons name="person" size={20} color="#111827" />
+            </TouchableOpacity>
+            <View style={styles.topNavLinks}>
+              <TouchableOpacity onPress={() => router.push('/dashboard')} activeOpacity={0.7}>
+                <Text style={styles.topNavText}>Home</Text>
+              </TouchableOpacity>
+              <TouchableOpacity onPress={() => router.push('/services')} activeOpacity={0.7}>
+                <Text style={styles.topNavText}>Services</Text>
+              </TouchableOpacity>
+              <TouchableOpacity onPress={() => router.push('/promodeals')} activeOpacity={0.7}>
+                <Text style={styles.topNavText}>Hot Deals</Text>
+              </TouchableOpacity>
+              <TouchableOpacity onPress={() => router.push('/booking')} activeOpacity={0.7}>
+                <Text style={styles.topNavText}>Bookings</Text>
+              </TouchableOpacity>
+            </View>
+            <TouchableOpacity
               onPress={() => setModalVisible(true)}
+              activeOpacity={0.8}
+              style={styles.topNavNotifRight}
             >
-              <Ionicons name="notifications-outline" size={24} color="#7C3AED" />
-              {notifications.length > 0 && (
-                <Animated.View
-                  style={[
-                    styles.notificationBadge,
-                    {
-                      transform: [{ scale: scaleAnim }],
-                    },
-                  ]}
-                />
-              )}
-            </AnimatedButton>
+              <Ionicons name="notifications-outline" size={20} color="#7C3AED" />
+              {notifications.length > 0 && <View style={styles.topNavNotifBadge} />}
+            </TouchableOpacity>
           </View>
 
-          {/* Search Bar with Animation */}
-          <Animated.View
-            style={[
-              styles.searchBar,
-              {
-                opacity: fadeAnim,
-                transform: [{ translateY: slideAnim }],
-              },
-            ]}
-          >
-            <Ionicons name="search-outline" size={20} color="#9CA3AF" />
+          {/* Search bar below top nav */}
+          <View style={styles.heroSearch}>
+            <Ionicons name="search-outline" size={18} color="#9CA3AF" />
             <TextInput
               placeholder="Search services..."
               placeholderTextColor="#9CA3AF"
-              style={styles.searchInput}
+              style={styles.heroSearchInput}
             />
-          </Animated.View>
-        </Animated.View>
+          </View>
 
-        {/* Animated Salon Banner */}
-        <Animated.View
-          style={[
-            styles.salonBanner,
-            {
-              opacity: fadeAnim,
-              transform: [
-                { translateY: slideAnim },
-                { scale: scaleAnim },
-              ],
-            },
-          ]}
-        >
-          <AnimatedButton activeOpacity={0.95} onPress={() => router.push("/booking")}>
-            <Image source={{ uri: salon.image }} style={styles.salonImage} />
-            <View style={styles.imageOverlay} />
-            <View style={styles.salonBadge}>
-              <Ionicons name="star" size={14} color="#FFC857" />
-              <Text style={styles.salonRating}>{salon.rating}</Text>
-              <Text style={styles.salonReviews}>({salon.reviews})</Text>
-            </View>
-
-            <View style={styles.salonInfo}>
-              <View style={styles.salonHeader}>
-                <View>
-                  <Text style={styles.salonName}>{salon.name}</Text>
-                  <View style={styles.locationRow}>
-                    <Ionicons name="location" size={14} color="#7C3AED" />
-                    <Text style={styles.salonLocation}>{salon.location}</Text>
-                  </View>
-                </View>
-                <TouchableOpacity onPress={handleHeartPress} activeOpacity={0.6}>
-                  <Animated.View style={{ transform: [{ scale: heartScale }] }}>
-                    <Ionicons name="heart-outline" size={22} color="#7C3AED" />
-                  </Animated.View>
-                </TouchableOpacity>
-              </View>
-              <Text style={styles.salonAbout}>{salon.about}</Text>
-              <AnimatedButton
-                style={styles.bookButton}
-                onPress={() => router.push("/booking")}
-              >
-                <Text style={styles.bookButtonText}>Book Appointment</Text>
-                <Ionicons name="arrow-forward" size={18} color="#fff" />
-              </AnimatedButton>
-            </View>
+          <AnimatedButton style={styles.heroCta} onPress={() => router.push("/booking")}>
+            <Text style={styles.heroCtaText}>Book Appointment</Text>
+            <Ionicons name="arrow-forward" size={18} color="#fff" />
           </AnimatedButton>
-        </Animated.View>
+        </View>
+
+        {/* Animated Salon Banner (appears after scrolling) */}
+        {scrollY > screenHeight * 0.2 && (
+          <Animated.View
+            style={[
+              styles.salonBanner,
+              {
+                opacity: fadeAnim,
+                transform: [
+                  { translateY: slideAnim },
+                  { scale: scaleAnim },
+                ],
+              },
+            ]}
+          >
+            <AnimatedButton activeOpacity={0.95} onPress={() => router.push("/booking")}>
+              <Image source={{ uri: salon.image }} style={styles.salonImage} />
+              <View style={styles.imageOverlay} />
+              <View style={styles.salonBadge}>
+                <Ionicons name="star" size={14} color="#FFC857" />
+                <Text style={styles.salonRating}>{salon.rating}</Text>
+                <Text style={styles.salonReviews}>({salon.reviews})</Text>
+              </View>
+
+              <View style={styles.salonInfo}>
+                <View style={styles.salonHeader}>
+                  <View>
+                    <Text style={styles.salonName}>{salon.name}</Text>
+                    <View style={styles.locationRow}>
+                      <Ionicons name="location" size={14} color="#7C3AED" />
+                      <Text style={styles.salonLocation}>{salon.location}</Text>
+                    </View>
+                  </View>
+                  <TouchableOpacity onPress={handleHeartPress} activeOpacity={0.6}>
+                    <Animated.View style={{ transform: [{ scale: heartScale }] }}>
+                      <Ionicons name="heart-outline" size={22} color="#7C3AED" />
+                    </Animated.View>
+                  </TouchableOpacity>
+                </View>
+                <Text style={styles.salonAbout}>{salon.about}</Text>
+                <AnimatedButton
+                  style={styles.bookButton}
+                  onPress={() => router.push("/booking")}
+                >
+                  <Text style={styles.bookButtonText}>Book Appointment</Text>
+                  <Ionicons name="arrow-forward" size={18} color="#fff" />
+                </AnimatedButton>
+              </View>
+            </AnimatedButton>
+          </Animated.View>
+        )}
 
         {/* Services Section */}
         <View style={styles.sectionHeader}>
@@ -508,6 +506,124 @@ const ServiceCard = ({ item, onPress }: any) => {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: "#FFFFFF" },
+
+  heroSection: {
+    width: '100%',
+    position: 'relative',
+    overflow: 'hidden',
+    backgroundColor: '#000',
+  },
+  heroImage: {
+    width: '100%',
+    height: '100%',
+    resizeMode: 'cover',
+  },
+  heroCta: {
+    position: 'absolute',
+    bottom: 40,
+    alignSelf: 'center',
+    backgroundColor: '#7C3AED',
+    paddingHorizontal: 24,
+    paddingVertical: 14,
+    borderRadius: 28,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    shadowColor: '#000',
+    shadowOpacity: 0.25,
+    shadowOffset: { width: 0, height: 4 },
+    shadowRadius: 10,
+    elevation: 6,
+  },
+  heroCtaText: {
+    color: '#FFFFFF',
+    fontSize: 16,
+    fontWeight: '600',
+    marginRight: 8,
+  },
+
+  topNavRow: {
+    position: 'absolute',
+    top: 40,
+    left: 0,
+    right: 0,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    minHeight: 28,
+    paddingHorizontal: 16,
+  },
+  topNavLinks: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 18,
+  },
+  topNavText: {
+    color: '#FFFFFF',
+    fontSize: 16,
+    fontWeight: '600',
+    textShadowColor: 'rgba(0,0,0,0.4)',
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 2,
+  },
+  topNavProfileLeft: {
+    position: 'absolute',
+    left: 16,
+    width: 34,
+    height: 34,
+    borderRadius: 17,
+    backgroundColor: 'rgba(255,255,255,0.85)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: '#000',
+    shadowOpacity: 0.25,
+    shadowOffset: { width: 0, height: 2 },
+    shadowRadius: 3,
+    elevation: 2,
+  },
+  topNavNotifRight: {
+    position: 'absolute',
+    right: 16,
+    width: 34,
+    height: 34,
+    borderRadius: 17,
+    backgroundColor: 'rgba(255,255,255,0.85)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: '#000',
+    shadowOpacity: 0.25,
+    shadowOffset: { width: 0, height: 2 },
+    shadowRadius: 3,
+    elevation: 2,
+  },
+  topNavNotifBadge: {
+    position: 'absolute',
+    top: 6,
+    right: 6,
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: '#7C3AED',
+  },
+
+  heroSearch: {
+    position: 'absolute',
+    top: 80,
+    left: 16,
+    right: 16,
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(249,250,251,0.72)',
+    borderRadius: 16,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    gap: 10,
+  },
+  heroSearchInput: {
+    flex: 1,
+    fontSize: 15,
+    color: '#1F2937',
+  },
 
   headerGradient: {
     backgroundColor: '#FFFFFF',

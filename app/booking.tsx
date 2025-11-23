@@ -1,25 +1,27 @@
 import { Ionicons } from "@expo/vector-icons";
+import { onAuthStateChanged } from "firebase/auth";
 import {
   addDoc,
   collection,
   deleteDoc,
   doc,
-  getDocs,
+  onSnapshot,
   query,
+  serverTimestamp,
   updateDoc,
-  where,
+  where
 } from "firebase/firestore";
 import React, { useEffect, useState } from "react";
 import {
   Alert,
   FlatList,
   Modal,
+  ScrollView,
   StyleSheet,
   Text,
   TextInput,
   TouchableOpacity,
   View,
-  ScrollView,
 } from "react-native";
 import { auth, db } from "../constants/firebaseConfig";
 import { getServices } from "../constants/servicesData";
@@ -52,31 +54,45 @@ export default function BookingScreen() {
     stylist: "",
   });
 
-  // ✅ Fetch only the bookings of the logged-in user
-  const fetchBookings = async () => {
-    try {
-      const user = auth.currentUser;
-      if (!user) return;
-
-      const q = query(collection(db, "bookings"), where("userId", "==", user.uid));
-      const snapshot = await getDocs(q);
-
-      const data = snapshot.docs.map((doc) => ({
-        id: doc.id,
-        ...doc.data(),
-      })) as Booking[];
-
-      setBookings(data);
-    } catch (error) {
-      console.error("Error fetching bookings:", error);
-    }
-  };
-
+  // Real-time subscription to the current user's bookings
   useEffect(() => {
-    fetchBookings();
+    let unsubscribeFirestore: undefined | (() => void);
+    const unsubscribeAuth = onAuthStateChanged(auth, (user) => {
+      // cleanup previous listener when auth changes
+      if (unsubscribeFirestore) {
+        unsubscribeFirestore();
+        unsubscribeFirestore = undefined;
+      }
+      if (!user) {
+        setBookings([]);
+        return;
+      }
+      const qUser = query(collection(db, "bookings"), where("userId", "==", user.uid));
+      unsubscribeFirestore = onSnapshot(qUser, (snapshot) => {
+        const data = snapshot.docs.map((snap) => {
+          const d: any = snap.data();
+          return {
+            id: snap.id,
+            service: d.service ?? d.serviceName ?? "",
+            date: d.date ?? d.dateString ?? "",
+            time: d.time ?? d.timeString ?? "",
+            stylist: d.stylist ?? d.stylistName ?? "",
+            status: d.status ?? "pending",
+            userId: d.userId ?? "",
+          } as Booking;
+        });
+        setBookings(data);
+      }, (err) => {
+        console.error("onSnapshot bookings error:", err);
+      });
+    });
+    return () => {
+      unsubscribeAuth();
+      if (unsubscribeFirestore) unsubscribeFirestore();
+    };
   }, []);
 
-  // 🧹 Remove duplicate bookings
+  // Remove duplicate bookings
   const removeDuplicates = async () => {
     try {
       const user = auth.currentUser;
@@ -134,11 +150,11 @@ export default function BookingScreen() {
     }
   };
 
-  // ➕ CREATE or ✏️ UPDATE
+  // CREATE or UPDATE
   const handleSaveBooking = async () => {
     // Prevent duplicate saves
     if (isSaving) return;
-    
+
     const { service, date, time, stylist } = form;
     const user = auth.currentUser;
 
@@ -154,41 +170,54 @@ export default function BookingScreen() {
 
     setIsSaving(true);
 
-    const bookingData = {
+    const bookingData: any = {
       userId: user.uid,
+      // primary field names
       service,
       date,
       time,
       stylist,
+      // compatibility field names to match existing Firestore docs
+      serviceName: service,
+      dateString: date,
+      timeString: time,
+      stylistName: stylist,
       status: "pending",
+      updatedAt: serverTimestamp(),
     };
 
     try {
       if (editingId) {
         // Update existing booking
         await updateDoc(doc(db, "bookings", editingId), bookingData);
+
         // Update local state immediately
-        setBookings(bookings.map(b => 
+        setBookings(bookings.map((b) =>
           b.id === editingId ? { ...b, ...bookingData } : b
         ));
-        resetModal();
-        Alert.alert("Updated", "Appointment updated successfully!");
+        resetForNextBooking();
+        Alert.alert("Updated", "Appointment updated successfully! You can add another.");
       } else {
         // Add new booking
-        const docRef = await addDoc(collection(db, "bookings"), bookingData);
+        const docRef = await addDoc(
+          collection(db, "bookings"),
+          { ...bookingData, createdAt: serverTimestamp() }
+        );
+
         // Add to local state immediately
         setBookings([...bookings, { id: docRef.id, ...bookingData }]);
-        resetModal();
-        Alert.alert("Booked!", "Your appointment has been created.");
+        resetForNextBooking();
+        Alert.alert("Booked!", "Your appointment has been created. You can add another.");
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error saving booking:", error);
-      Alert.alert("Error", "Failed to save booking. Check Firestore rules.");
+      const message = (error && (error.message || String(error))) || "Unknown error";
+      Alert.alert("Error", `Failed to save booking. ${message}`);
       setIsSaving(false);
     }
   };
 
-  // 🗑️ DELETE
+  // DELETE
   const handleDeleteBooking = async (id: string) => {
     Alert.alert("Cancel Appointment", "Are you sure?", [
       { text: "No" },
@@ -208,7 +237,7 @@ export default function BookingScreen() {
     ]);
   };
 
-  // ✏️ EDIT
+  // EDIT
   const handleEditBooking = (booking: Booking) => {
     setForm({
       service: booking.service,
@@ -249,6 +278,16 @@ export default function BookingScreen() {
     setShowCalendar(false);
     setSelectedDate(null);
     setIsSaving(false);
+  };
+
+  const resetForNextBooking = () => {
+    setStep(1);
+    setForm({ service: "", date: "", time: "", stylist: "" });
+    setEditingId(null);
+    setShowCalendar(false);
+    setSelectedDate(null);
+    setIsSaving(false);
+    setModalVisible(true);
   };
 
   // Simple calendar component
