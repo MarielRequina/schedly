@@ -18,7 +18,7 @@ import {
   View,
 } from "react-native";
 
-import { auth, db } from "../constants/firebaseConfig";
+import { Authentication, database } from "../constants/firebaseConfig";
 
 // Animated Button Component with Touch Effects
 const AnimatedButton = ({ children, onPress, style, activeOpacity = 0.85 }: any) => {
@@ -162,9 +162,9 @@ export default function Dashboard() {
   useEffect(() => {
     const fetchUserName = async () => {
       try {
-        const user = auth.currentUser;
+        const user = Authentication.currentUser;
         if (!user) return;
-        const docRef = doc(db, "users", user.uid);
+        const docRef = doc(database, "users", user.uid);
         const docSnap = await getDoc(docRef);
         if (docSnap.exists()) {
           setUserName(docSnap.data().name || "User");

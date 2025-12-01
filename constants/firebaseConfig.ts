@@ -1,46 +1,22 @@
-// constants/firebaseConfig.ts
-import AsyncStorage from "@react-native-async-storage/async-storage";
-import { FirebaseApp, getApp, getApps, initializeApp } from "firebase/app";
-import {
-  Auth,
-  getAuth,
-  getReactNativePersistence,
-  initializeAuth,
-} from "firebase/auth";
-import { Firestore, getFirestore } from "firebase/firestore";
+// firebase/config.js
+import { getApp, getApps, initializeApp } from "firebase/app";
+import { getAuth } from "firebase/auth";
+import { getFirestore } from "firebase/firestore";
 
-// ✅ Your Firebase configuration
+// Your web app's Firebase configuration
 const firebaseConfig = {
-   apiKey: "AIzaSyAG0i3pa6hWDaW8a8-QpcfXKmECdYnvNMI",
-  authDomain: "schedly-87272.firebaseapp.com",
-  projectId: "schedly-87272",
-  storageBucket: "schedly-87272.firebasestorage.app",
-  messagingSenderId: "281484836803",
-  appId: "1:281484836803:web:eda10a420dc05cdc02c776",
-  measurementId: "G-10NMEEGVK9",
+  apiKey: "AIzaSyA2IJjcdjqgmswbvaAwWMTDjGKe432_ErY",
+  authDomain: "schedlysalon.firebaseapp.com",
+  projectId: "schedlysalon",
+  storageBucket: "schedlysalon.firebasestorage.app",
+  messagingSenderId: "985547010552",
+  appId: "1:985547010552:web:c00be57c0b4d8a0d74a60d",
+  measurementId: "G-ZZG4LM6PDQ"
 };
 
-// ✅ Initialize Firebase App (only once)
-let app: FirebaseApp;
-if (getApps().length === 0) {
-  app = initializeApp(firebaseConfig);
-} else {
-  app = getApp();
-}
+// Initialize Firebase only if no app exists
+const app = !getApps().length ? initializeApp(firebaseConfig) : getApp();
 
-// ✅ Initialize Firebase Auth safely for React Native
-let auth: Auth;
-try {
-  auth = initializeAuth(app, {
-    persistence: getReactNativePersistence(AsyncStorage),
-  });
-} catch (error) {
-  // If already initialized, reuse the existing instance
-  auth = getAuth(app);
-}
-
-// ✅ Initialize Firestore
-const db: Firestore = getFirestore(app);
-
-export { app, auth, db };
-
+export const database = getFirestore(app);
+export const Authentication = getAuth(app);
+export const firebase = app;

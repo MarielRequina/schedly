@@ -2,21 +2,23 @@ import { Ionicons } from "@expo/vector-icons";
 import React, { useState } from "react";
 import {
   Alert,
-  FlatList,
+  Image,
+  KeyboardAvoidingView,
   Modal,
+  Platform,
+  ScrollView,
   StyleSheet,
   Text,
   TextInput,
   TouchableOpacity,
   View,
-  ScrollView,
 } from "react-native";
 import {
   Service,
-  getServices,
   addService,
-  updateService,
   deleteService,
+  getServices,
+  updateService,
 } from "../../constants/servicesData";
 
 export default function ManageServices() {
@@ -130,8 +132,12 @@ export default function ManageServices() {
   // 🖼️ UI
   return (
     <View style={styles.container}>
-      <View style={styles.headerRow}>
-        <Text style={styles.header}>Manage Services</Text>
+      {/* Header */}
+      <View style={styles.headerContainer}>
+        <View>
+          <Text style={styles.header}>Manage Services</Text>
+          <Text style={styles.subHeader}>{services.length} service{services.length !== 1 ? 's' : ''} available</Text>
+        </View>
         <TouchableOpacity
           style={styles.addButton}
           onPress={() => {
@@ -139,43 +145,79 @@ export default function ManageServices() {
             setModalVisible(true);
           }}
         >
-          <Ionicons name="add-circle" size={32} color="#6B46C1" />
+          <Ionicons name="add" size={24} color="#fff" />
         </TouchableOpacity>
       </View>
 
-      <ScrollView showsVerticalScrollIndicator={false}>
+      <ScrollView 
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={styles.scrollContent}
+      >
         {services.length === 0 ? (
-          <Text style={styles.emptyText}>No services yet. Add one to get started!</Text>
+          <View style={styles.emptyContainer}>
+            <View style={styles.emptyIconContainer}>
+              <Ionicons name="cut-outline" size={60} color="#E0A100" />
+            </View>
+            <Text style={styles.emptyTitle}>No services yet</Text>
+            <Text style={styles.emptySubtitle}>Add your first service to get started</Text>
+            <TouchableOpacity
+              style={styles.emptyButton}
+              onPress={() => {
+                resetForm();
+                setModalVisible(true);
+              }}
+            >
+              <Ionicons name="add" size={20} color="#fff" />
+              <Text style={styles.emptyButtonText}>Add Service</Text>
+            </TouchableOpacity>
+          </View>
         ) : (
           services.map((item) => (
             <View key={item.id} style={styles.card}>
-              <View style={{ flex: 1 }}>
+              {/* Service Image */}
+              <View style={styles.imageContainer}>
+                <Image 
+                  source={item.image} 
+                  style={styles.serviceImage}
+                  resizeMode="cover"
+                />
+              </View>
+
+              {/* Service Info */}
+              <View style={styles.serviceInfo}>
                 <Text style={styles.serviceName}>{item.name}</Text>
-                <Text style={styles.detail}>Price: {item.price}</Text>
+                
+                <View style={styles.priceContainer}>
+                  <Ionicons name="pricetag" size={16} color="#E0A100" />
+                  <Text style={styles.price}>{item.price}</Text>
+                </View>
+                
                 {item.description && (
-                  <Text style={styles.description}>{item.description}</Text>
+                  <Text style={styles.description} numberOfLines={2}>
+                    {item.description}
+                  </Text>
                 )}
               </View>
 
-              <View style={styles.buttons}>
+              {/* Action Buttons */}
+              <View style={styles.actionButtons}>
                 <TouchableOpacity
-                  style={[styles.button, { backgroundColor: "#4299E1" }]}
+                  style={[styles.actionButton, styles.editButton]}
                   onPress={() => openEditModal(item)}
                 >
-                  <Ionicons name="pencil-outline" size={20} color="#fff" />
+                  <Ionicons name="pencil" size={18} color="#fff" />
                 </TouchableOpacity>
 
                 <TouchableOpacity
-                  style={[styles.button, { backgroundColor: "#E53E3E" }]}
+                  style={[styles.actionButton, styles.deleteButton]}
                   onPress={() => handleDeleteService(item.id)}
                 >
-                  <Ionicons name="trash-outline" size={20} color="#fff" />
+                  <Ionicons name="trash" size={18} color="#fff" />
                 </TouchableOpacity>
               </View>
             </View>
           ))
         )}
-        <View style={{ height: 100 }} />
       </ScrollView>
 
       {/* Modal for Add/Edit Service */}
@@ -188,47 +230,105 @@ export default function ManageServices() {
           setModalVisible(false);
         }}
       >
-        <View style={styles.modalOverlay}>
+        <KeyboardAvoidingView 
+          behavior={Platform.OS === "ios" ? "padding" : "height"}
+          style={styles.modalOverlay}
+        >
           <View style={styles.modalContent}>
-            <Text style={styles.modalTitle}>
-              {editMode ? "Edit Service" : "Add New Service"}
-            </Text>
+            {/* Modal Header */}
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>
+                {editMode ? "Edit Service" : "Add New Service"}
+              </Text>
+              <TouchableOpacity 
+                onPress={() => {
+                  resetForm();
+                  setModalVisible(false);
+                }}
+                style={styles.closeButton}
+              >
+                <Ionicons name="close" size={24} color="#666" />
+              </TouchableOpacity>
+            </View>
 
-            <TextInput
-              style={styles.input}
-              placeholder="Service Name *"
-              placeholderTextColor="#999"
-              value={name}
-              onChangeText={setName}
-            />
+            <ScrollView showsVerticalScrollIndicator={false}>
+              {/* Service Name */}
+              <View style={styles.inputContainer}>
+                <View style={styles.inputLabel}>
+                  <Ionicons name="cut" size={16} color="#E0A100" />
+                  <Text style={styles.labelText}>Service Name *</Text>
+                </View>
+                <TextInput
+                  style={styles.input}
+                  placeholder="e.g., Premium Haircut"
+                  placeholderTextColor="#9CA3AF"
+                  value={name}
+                  onChangeText={setName}
+                />
+              </View>
 
-            <TextInput
-              style={styles.input}
-              placeholder="Price (e.g., ₱250) *"
-              placeholderTextColor="#999"
-              value={price}
-              onChangeText={setPrice}
-            />
+              {/* Price */}
+              <View style={styles.inputContainer}>
+                <View style={styles.inputLabel}>
+                  <Ionicons name="pricetag" size={16} color="#E0A100" />
+                  <Text style={styles.labelText}>Price *</Text>
+                </View>
+                <TextInput
+                  style={styles.input}
+                  placeholder="e.g., ₱250"
+                  placeholderTextColor="#9CA3AF"
+                  value={price}
+                  onChangeText={setPrice}
+                  keyboardType="default"
+                />
+              </View>
 
-            <TextInput
-              style={styles.input}
-              placeholder="Image URL *"
-              placeholderTextColor="#999"
-              value={imageUrl}
-              onChangeText={setImageUrl}
-            />
+              {/* Image URL */}
+              <View style={styles.inputContainer}>
+                <View style={styles.inputLabel}>
+                  <Ionicons name="image" size={16} color="#E0A100" />
+                  <Text style={styles.labelText}>Image URL *</Text>
+                </View>
+                <TextInput
+                  style={styles.input}
+                  placeholder="https://example.com/image.jpg"
+                  placeholderTextColor="#9CA3AF"
+                  value={imageUrl}
+                  onChangeText={setImageUrl}
+                  autoCapitalize="none"
+                />
+                {imageUrl && (
+                  <View style={styles.imagePreview}>
+                    <Image 
+                      source={{ uri: imageUrl }} 
+                      style={styles.previewImage}
+                      resizeMode="cover"
+                    />
+                  </View>
+                )}
+              </View>
 
-            <TextInput
-              style={[styles.input, styles.textArea]}
-              placeholder="Description (optional)"
-              placeholderTextColor="#999"
-              value={description}
-              onChangeText={setDescription}
-              multiline
-              numberOfLines={3}
-            />
+              {/* Description */}
+              <View style={styles.inputContainer}>
+                <View style={styles.inputLabel}>
+                  <Ionicons name="document-text" size={16} color="#E0A100" />
+                  <Text style={styles.labelText}>Description (Optional)</Text>
+                </View>
+                <TextInput
+                  style={[styles.input, styles.textArea]}
+                  placeholder="Brief description of the service..."
+                  placeholderTextColor="#9CA3AF"
+                  value={description}
+                  onChangeText={setDescription}
+                  multiline
+                  numberOfLines={4}
+                  textAlignVertical="top"
+                />
+              </View>
+            </ScrollView>
 
-            <View style={styles.modalButtons}>
+            {/* Modal Actions */}
+            <View style={styles.modalActions}>
               <TouchableOpacity
                 style={[styles.modalButton, styles.cancelButton]}
                 onPress={() => {
@@ -243,118 +343,280 @@ export default function ManageServices() {
                 style={[styles.modalButton, styles.saveButton]}
                 onPress={editMode ? handleEditService : handleAddService}
               >
+                <Ionicons 
+                  name={editMode ? "checkmark" : "add"} 
+                  size={20} 
+                  color="#fff" 
+                />
                 <Text style={styles.saveButtonText}>
-                  {editMode ? "Update" : "Add"}
+                  {editMode ? "Update" : "Add Service"}
                 </Text>
               </TouchableOpacity>
             </View>
           </View>
-        </View>
+        </KeyboardAvoidingView>
       </Modal>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: "#fff", padding: 20 },
-  headerRow: {
+  container: { flex: 1, backgroundColor: "#FFF7E6" },
+  
+  // Header
+  headerContainer: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    marginBottom: 15,
+    paddingHorizontal: 16,
+    paddingTop: 16,
+    paddingBottom: 16,
   },
-  header: { fontSize: 22, fontWeight: "700", color: "#6B46C1" },
+  header: { fontSize: 28, fontWeight: "700", color: "#1F2937" },
+  subHeader: { fontSize: 14, color: "#6B7280", marginTop: 2 },
   addButton: {
-    padding: 5,
-  },
-  emptyText: {
-    textAlign: "center",
-    color: "#777",
-    marginTop: 20,
-    fontSize: 14,
-  },
-  card: {
-    backgroundColor: "#F9F5FF",
-    padding: 15,
-    borderRadius: 16,
-    marginBottom: 15,
-    flexDirection: "row",
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: "#E0A100",
+    justifyContent: "center",
     alignItems: "center",
     shadowColor: "#000",
-    shadowOpacity: 0.1,
-    shadowOffset: { width: 0, height: 1 },
-    shadowRadius: 2,
-    elevation: 2,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.15,
+    shadowRadius: 8,
+    elevation: 4,
   },
-  serviceName: { fontSize: 17, fontWeight: "600", color: "#4A148C", marginBottom: 4 },
-  detail: { color: "#555", fontSize: 13, marginTop: 2 },
-  description: { color: "#777", fontSize: 12, marginTop: 4, fontStyle: "italic" },
-  buttons: {
+
+  // Scroll Content
+  scrollContent: {
+    paddingHorizontal: 16,
+    paddingBottom: 40,
+  },
+
+  // Empty State
+  emptyContainer: {
+    alignItems: "center",
+    justifyContent: "center",
+    paddingVertical: 60,
+  },
+  emptyIconContainer: {
+    width: 120,
+    height: 120,
+    borderRadius: 60,
+    backgroundColor: "#fff",
+    justifyContent: "center",
+    alignItems: "center",
+    marginBottom: 24,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.08,
+    shadowRadius: 8,
+    elevation: 3,
+  },
+  emptyTitle: { 
+    fontSize: 22, 
+    fontWeight: "700", 
+    color: "#1F2937", 
+    marginBottom: 8 
+  },
+  emptySubtitle: { 
+    fontSize: 14, 
+    color: "#6B7280", 
+    marginBottom: 24,
+    textAlign: "center",
+  },
+  emptyButton: {
     flexDirection: "row",
+    alignItems: "center",
     gap: 8,
+    backgroundColor: "#E0A100",
+    paddingHorizontal: 24,
+    paddingVertical: 12,
+    borderRadius: 12,
   },
-  button: {
-    padding: 8,
-    borderRadius: 10,
+  emptyButtonText: {
+    color: "#fff",
+    fontSize: 16,
+    fontWeight: "700",
+  },
+
+  // Service Card
+  card: {
+    backgroundColor: "#fff",
+    borderRadius: 16,
+    marginBottom: 16,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.08,
+    shadowRadius: 8,
+    elevation: 3,
+    overflow: "hidden",
+  },
+  imageContainer: {
+    width: "100%",
+    height: 160,
+    backgroundColor: "#F3F4F6",
+  },
+  serviceImage: {
+    width: "100%",
+    height: "100%",
+  },
+  serviceInfo: {
+    padding: 16,
+  },
+  serviceName: { 
+    fontSize: 18, 
+    fontWeight: "700", 
+    color: "#1F2937", 
+    marginBottom: 8 
+  },
+  priceContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    marginBottom: 8,
+  },
+  price: { 
+    fontSize: 16, 
+    fontWeight: "600", 
+    color: "#E0A100" 
+  },
+  description: { 
+    color: "#6B7280", 
+    fontSize: 13, 
+    lineHeight: 18 
+  },
+
+  // Action Buttons
+  actionButtons: {
+    flexDirection: "row",
+    borderTopWidth: 1,
+    borderTopColor: "#F3F4F6",
+  },
+  actionButton: {
+    flex: 1,
+    padding: 16,
     alignItems: "center",
     justifyContent: "center",
   },
+  editButton: {
+    backgroundColor: "#3B82F6",
+    borderBottomLeftRadius: 16,
+  },
+  deleteButton: {
+    backgroundColor: "#EF4444",
+    borderBottomRightRadius: 16,
+  },
+
+  // Modal
   modalOverlay: {
     flex: 1,
-    backgroundColor: "rgba(0,0,0,0.5)",
-    justifyContent: "center",
-    alignItems: "center",
+    backgroundColor: "rgba(0,0,0,0.6)",
+    justifyContent: "flex-end",
   },
   modalContent: {
     backgroundColor: "#fff",
-    borderRadius: 20,
-    padding: 25,
-    width: "90%",
-    maxWidth: 400,
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    padding: 24,
+    maxHeight: "90%",
+  },
+  modalHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: 24,
   },
   modalTitle: {
-    fontSize: 20,
+    fontSize: 22,
     fontWeight: "700",
-    color: "#6B46C1",
+    color: "#1F2937",
+  },
+  closeButton: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: "#F3F4F6",
+    justifyContent: "center",
+    alignItems: "center",
+  },
+
+  // Input Fields
+  inputContainer: {
     marginBottom: 20,
-    textAlign: "center",
+  },
+  inputLabel: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    marginBottom: 8,
+  },
+  labelText: {
+    fontSize: 14,
+    fontWeight: "600",
+    color: "#374151",
   },
   input: {
-    backgroundColor: "#F7FAFC",
+    backgroundColor: "#F9FAFB",
     borderRadius: 12,
-    padding: 12,
-    marginBottom: 12,
+    padding: 14,
     borderWidth: 1,
-    borderColor: "#E2E8F0",
-    fontSize: 14,
+    borderColor: "#E5E7EB",
+    fontSize: 15,
+    color: "#1F2937",
   },
   textArea: {
-    height: 80,
+    height: 100,
     textAlignVertical: "top",
   },
-  modalButtons: {
+
+  // Image Preview
+  imagePreview: {
+    marginTop: 12,
+    borderRadius: 12,
+    overflow: "hidden",
+    backgroundColor: "#F3F4F6",
+  },
+  previewImage: {
+    width: "100%",
+    height: 120,
+  },
+
+  // Modal Actions
+  modalActions: {
     flexDirection: "row",
-    gap: 10,
-    marginTop: 10,
+    gap: 12,
+    marginTop: 24,
   },
   modalButton: {
     flex: 1,
-    padding: 14,
-    borderRadius: 12,
+    flexDirection: "row",
     alignItems: "center",
+    justifyContent: "center",
+    gap: 8,
+    padding: 16,
+    borderRadius: 12,
   },
   cancelButton: {
-    backgroundColor: "#E2E8F0",
+    backgroundColor: "#F3F4F6",
   },
   cancelButtonText: {
-    color: "#4A5568",
-    fontWeight: "600",
+    color: "#4B5563",
+    fontWeight: "700",
+    fontSize: 15,
   },
   saveButton: {
-    backgroundColor: "#6B46C1",
+    backgroundColor: "#E0A100",
+    shadowColor: "#E0A100",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 4,
   },
   saveButtonText: {
     color: "#fff",
-    fontWeight: "600",
+    fontWeight: "700",
+    fontSize: 15,
   },
 });

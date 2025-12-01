@@ -1,11 +1,11 @@
 import { Ionicons } from "@expo/vector-icons";
 import * as ImagePicker from "expo-image-picker";
+import { LinearGradient as ExpoLinearGradient } from 'expo-linear-gradient';
 import { useRouter } from "expo-router";
 import { signOut, User } from "firebase/auth";
 import { doc, getDoc, setDoc } from "firebase/firestore";
 import React, { useEffect, useState } from "react";
 import {
-  ActivityIndicator,
   Alert,
   Image,
   ScrollView,
@@ -13,14 +13,13 @@ import {
   Text,
   TextInput,
   TouchableOpacity,
-  View,
+  View
 } from "react-native";
-import { LinearGradient as ExpoLinearGradient } from 'expo-linear-gradient';
-import { auth, db } from "../constants/firebaseConfig";
+import { Authentication, database } from "../constants/firebaseConfig";
 
 export default function ProfileScreen() {
   const router = useRouter();
-  const user: User | null = auth.currentUser;
+  const user: User | null = Authentication.currentUser;
   const userId = user?.uid || "";
   const userEmail = user?.email || "";
   
@@ -37,7 +36,7 @@ export default function ProfileScreen() {
   // 🟣 Fetch user profile from Firestore
   const fetchProfile = async () => {
     try {
-      const docRef = doc(db, "users", userId);
+      const docRef = doc(database, "users", userId);
       const docSnap = await getDoc(docRef);
       if (docSnap.exists()) {
         const data = docSnap.data();
@@ -80,7 +79,7 @@ export default function ProfileScreen() {
     }
 
     try {
-      await setDoc(doc(db, "users", userId), { name, image }, { merge: true });
+      await setDoc(doc(database, "users", userId), { name, image }, { merge: true });
       setIsEditing(false);
       Alert.alert("Profile Updated", "Your profile has been saved successfully.");
     } catch (error) {
@@ -91,7 +90,7 @@ export default function ProfileScreen() {
 
   const handleLogout = async () => {
     try {
-      await signOut(auth);
+      await signOut(Authentication);
       router.replace('/login');
     } catch (error) {
       console.error("Error signing out:", error);

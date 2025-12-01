@@ -1,31 +1,11 @@
+// BookingScreen.tsx - React Native Version with Full CRUD
 import { Ionicons } from "@expo/vector-icons";
-import { onAuthStateChanged } from "firebase/auth";
-import {
-  addDoc,
-  collection,
-  deleteDoc,
-  doc,
-  onSnapshot,
-  query,
-  serverTimestamp,
-  updateDoc,
-  where
-} from "firebase/firestore";
+import { addDoc, collection, deleteDoc, doc, onSnapshot, query, updateDoc, where } from "firebase/firestore";
 import React, { useEffect, useState } from "react";
-import {
-  Alert,
-  FlatList,
-  Modal,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  View,
-} from "react-native";
-import { auth, db } from "../constants/firebaseConfig";
-import { getServices } from "../constants/servicesData";
+import { Alert, FlatList, Modal, ScrollView, StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import { Authentication, database } from "../constants/firebaseConfig";
 
+// Booking interface
 interface Booking {
   id?: string;
   service: string;
@@ -36,496 +16,483 @@ interface Booking {
   userId: string;
 }
 
-export default function BookingScreen() {
+// Services/Promos data
+const SERVICES = [
+  'Premium Haircut',
+  'Color Treatment',
+  'Hair Styling',
+  'Keratin Treatment',
+  'Hair Spa',
+  'Balayage',
+  'Highlights'
+];
+
+// Stylists data
+const STYLISTS = ['Sarah Johnson', 'Mike Chen', 'Emma Davis', 'Alex Rodriguez'];
+
+// Time slots
+const TIME_SLOTS = [
+  '09:00 AM', '10:00 AM', '11:00 AM', '12:00 PM',
+  '01:00 PM', '02:00 PM', '03:00 PM', '04:00 PM', '05:00 PM'
+];
+
+// Generate available dates (excluding Sundays)
+const generateAvailableDates = () => {
+  const dates: string[] = [];
+  const today = new Date();
+  
+  for (let i = 0; i < 60; i++) {
+    const date = new Date(today);
+    date.setDate(today.getDate() + i);
+    
+    // Skip Sundays (day 0)
+    if (date.getDay() !== 0) {
+      dates.push(date.toISOString().split('T')[0]);
+    }
+  }
+  
+  return dates;
+};
+
+const AVAILABLE_DATES = generateAvailableDates();
+
+export default function BookingScreen({ isAdmin = false }: { isAdmin?: boolean }) {
   const [bookings, setBookings] = useState<Booking[]>([]);
   const [modalVisible, setModalVisible] = useState(false);
-  const [editingId, setEditingId] = useState<string | null>(null);
-  const [step, setStep] = useState(1); // 1: Service, 2: Date/Time, 3: Stylist
-  const [selectedDate, setSelectedDate] = useState<Date | null>(null);
-  const [showCalendar, setShowCalendar] = useState(false);
-  const [isSaving, setIsSaving] = useState(false);
+  const [editingBooking, setEditingBooking] = useState<Booking | null>(null);
+  
+  // Booking steps
+  const [step, setStep] = useState(1); // 1: service, 2: date, 3: time, 4: stylist
+  const [selectedService, setSelectedService] = useState('');
+  const [selectedDate, setSelectedDate] = useState('');
+  const [selectedTime, setSelectedTime] = useState('');
+  const [selectedStylist, setSelectedStylist] = useState('');
+  
+  // Calendar state
+  const [currentMonth, setCurrentMonth] = useState(new Date());
 
-  const services = getServices();
-
-  const [form, setForm] = useState({
-    service: "",
-    date: "",
-    time: "",
-    stylist: "",
-  });
-
-  // Real-time subscription to the current user's bookings
+  // Fetch bookings
   useEffect(() => {
-    let unsubscribeFirestore: undefined | (() => void);
-    const unsubscribeAuth = onAuthStateChanged(auth, (user) => {
-      // cleanup previous listener when auth changes
-      if (unsubscribeFirestore) {
-        unsubscribeFirestore();
-        unsubscribeFirestore = undefined;
-      }
-      if (!user) {
-        setBookings([]);
-        return;
-      }
-      const qUser = query(collection(db, "bookings"), where("userId", "==", user.uid));
-      unsubscribeFirestore = onSnapshot(qUser, (snapshot) => {
-        const data = snapshot.docs.map((snap) => {
-          const d: any = snap.data();
-          return {
-            id: snap.id,
-            service: d.service ?? d.serviceName ?? "",
-            date: d.date ?? d.dateString ?? "",
-            time: d.time ?? d.timeString ?? "",
-            stylist: d.stylist ?? d.stylistName ?? "",
-            status: d.status ?? "pending",
-            userId: d.userId ?? "",
-          } as Booking;
-        });
-        setBookings(data);
-      }, (err) => {
-        console.error("onSnapshot bookings error:", err);
-      });
-    });
-    return () => {
-      unsubscribeAuth();
-      if (unsubscribeFirestore) unsubscribeFirestore();
-    };
-  }, []);
-
-  // Remove duplicate bookings
-  const removeDuplicates = async () => {
-    try {
-      const user = auth.currentUser;
+    let q;
+    if (isAdmin) {
+      q = collection(database, "bookings");
+    } else {
+      const user = Authentication.currentUser;
       if (!user) return;
-
-      // Group bookings by unique key (service + date + time + stylist)
-      const uniqueBookings = new Map();
-      const duplicatesToDelete: string[] = [];
-
-      bookings.forEach((booking) => {
-        const key = `${booking.service}-${booking.date}-${booking.time}-${booking.stylist}`;
-        if (uniqueBookings.has(key)) {
-          // This is a duplicate, mark for deletion
-          if (booking.id) {
-            duplicatesToDelete.push(booking.id);
-          }
-        } else {
-          // First occurrence, keep it
-          uniqueBookings.set(key, booking);
-        }
-      });
-
-      if (duplicatesToDelete.length === 0) {
-        Alert.alert("No Duplicates", "No duplicate appointments found.");
-        return;
-      }
-
-      Alert.alert(
-        "Remove Duplicates",
-        `Found ${duplicatesToDelete.length} duplicate(s). Remove them?`,
-        [
-          { text: "Cancel", style: "cancel" },
-          {
-            text: "Remove",
-            style: "destructive",
-            onPress: async () => {
-              try {
-                // Delete duplicates from Firebase
-                for (const id of duplicatesToDelete) {
-                  await deleteDoc(doc(db, "bookings", id));
-                }
-                // Update local state
-                setBookings(Array.from(uniqueBookings.values()));
-                Alert.alert("Success", `Removed ${duplicatesToDelete.length} duplicate(s)!`);
-              } catch (error) {
-                console.error("Error removing duplicates:", error);
-                Alert.alert("Error", "Failed to remove duplicates.");
-              }
-            },
-          },
-        ]
-      );
-    } catch (error) {
-      console.error("Error checking duplicates:", error);
+      q = query(collection(database, "bookings"), where("userId", "==", user.uid));
     }
+
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      const data: Booking[] = snapshot.docs.map((docSnap) => ({
+        id: docSnap.id,
+        ...(docSnap.data() as any),
+      }));
+      setBookings(data);
+    });
+
+    return () => unsubscribe();
+  }, [isAdmin]);
+
+  // Calendar functions
+  const getCalendarDates = () => {
+    const dates: Date[] = [];
+    const startOfMonth = new Date(currentMonth.getFullYear(), currentMonth.getMonth(), 1);
+    const startDay = startOfMonth.getDay();
+    
+    const firstDate = new Date(startOfMonth);
+    firstDate.setDate(firstDate.getDate() - startDay);
+    
+    for (let i = 0; i < 42; i++) {
+      const date = new Date(firstDate);
+      date.setDate(firstDate.getDate() + i);
+      dates.push(date);
+    }
+    return dates;
   };
 
-  // CREATE or UPDATE
-  const handleSaveBooking = async () => {
-    // Prevent duplicate saves
-    if (isSaving) return;
+  const formatDate = (date: Date) => {
+    return date.toISOString().split('T')[0];
+  };
 
-    const { service, date, time, stylist } = form;
-    const user = auth.currentUser;
+  const isDateAvailable = (date: Date) => {
+    const dateStr = formatDate(date);
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    
+    const checkDate = new Date(date);
+    checkDate.setHours(0, 0, 0, 0);
+    if (checkDate < today) return false;
+    
+    if (date.getMonth() !== currentMonth.getMonth() || date.getFullYear() !== currentMonth.getFullYear()) {
+      return false;
+    }
+    
+    return AVAILABLE_DATES.includes(dateStr);
+  };
 
-    if (!user) {
-      Alert.alert("Error", "You must be logged in to book.");
+  const previousMonth = () => {
+    const newMonth = new Date(currentMonth);
+    newMonth.setMonth(currentMonth.getMonth() - 1);
+    setCurrentMonth(newMonth);
+  };
+
+  const nextMonth = () => {
+    const newMonth = new Date(currentMonth);
+    newMonth.setMonth(currentMonth.getMonth() + 1);
+    setCurrentMonth(newMonth);
+  };
+
+  const getMonthYear = () => {
+    return currentMonth.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+  };
+
+  // Open new booking modal
+  const openNewBooking = () => {
+    setEditingBooking(null);
+    setSelectedService('');
+    setSelectedDate('');
+    setSelectedTime('');
+    setSelectedStylist('');
+    setStep(1);
+    setModalVisible(true);
+  };
+
+  // Open edit booking modal - NEW FUNCTION
+  const openEditBooking = (booking: Booking) => {
+    setEditingBooking(booking);
+    setSelectedService(booking.service);
+    setSelectedDate(booking.date);
+    setSelectedTime(booking.time);
+    setSelectedStylist(booking.stylist);
+    setStep(1);
+    setModalVisible(true);
+  };
+
+  // Step handlers
+  const handleServiceSelect = (service: string) => {
+    setSelectedService(service);
+    setStep(2);
+  };
+
+  const handleDateSelect = (date: string) => {
+    setSelectedDate(date);
+    setStep(3);
+  };
+
+  const handleTimeSelect = (time: string) => {
+    setSelectedTime(time);
+    setStep(4);
+  };
+
+  const handleStylistSelect = (stylist: string) => {
+    setSelectedStylist(stylist);
+  };
+
+  // Save booking
+  const saveBooking = () => {
+    const user = Authentication.currentUser;
+    if (!user && !isAdmin) {
+      Alert.alert("Error", "You must be logged in.");
       return;
     }
 
-    if (!service || !date || !time || !stylist) {
-      Alert.alert("Missing Info", "Please fill in all fields.");
+    if (!selectedService || !selectedDate || !selectedTime || !selectedStylist) {
+      Alert.alert("Missing info", "Please complete all steps.");
       return;
     }
 
-    setIsSaving(true);
-
-    const bookingData: any = {
-      userId: user.uid,
-      // primary field names
-      service,
-      date,
-      time,
-      stylist,
-      // compatibility field names to match existing Firestore docs
-      serviceName: service,
-      dateString: date,
-      timeString: time,
-      stylistName: stylist,
-      status: "pending",
-      updatedAt: serverTimestamp(),
+    const data = {
+      service: selectedService,
+      date: selectedDate,
+      time: selectedTime,
+      stylist: selectedStylist,
+      status: editingBooking ? editingBooking.status : "pending",
+      userId: isAdmin && editingBooking ? editingBooking.userId : user?.uid,
     };
 
-    try {
-      if (editingId) {
-        // Update existing booking
-        await updateDoc(doc(db, "bookings", editingId), bookingData);
-
-        // Update local state immediately
-        setBookings(bookings.map((b) =>
-          b.id === editingId ? { ...b, ...bookingData } : b
-        ));
-        resetForNextBooking();
-        Alert.alert("Updated", "Appointment updated successfully! You can add another.");
-      } else {
-        // Add new booking
-        const docRef = await addDoc(
-          collection(db, "bookings"),
-          { ...bookingData, createdAt: serverTimestamp() }
-        );
-
-        // Add to local state immediately
-        setBookings([...bookings, { id: docRef.id, ...bookingData }]);
-        resetForNextBooking();
-        Alert.alert("Booked!", "Your appointment has been created. You can add another.");
-      }
-    } catch (error: any) {
-      console.error("Error saving booking:", error);
-      const message = (error && (error.message || String(error))) || "Unknown error";
-      Alert.alert("Error", `Failed to save booking. ${message}`);
-      setIsSaving(false);
+    if (editingBooking?.id) {
+      updateDoc(doc(database, "bookings", editingBooking.id), data)
+        .then(() => {
+          Alert.alert("Updated", "Booking updated successfully!");
+          setModalVisible(false);
+          setEditingBooking(null);
+        })
+        .catch((err) => {
+          console.error(err);
+          Alert.alert("Error", "Failed to update booking.");
+        });
+    } else {
+      addDoc(collection(database, "bookings"), data)
+        .then(() => {
+          Alert.alert("Success", "Booking created successfully!");
+          setModalVisible(false);
+        })
+        .catch((err) => {
+          console.error(err);
+          Alert.alert("Error", "Failed to create booking.");
+        });
     }
   };
 
-  // DELETE
-  const handleDeleteBooking = async (id: string) => {
-    Alert.alert("Cancel Appointment", "Are you sure?", [
-      { text: "No" },
+  // Delete booking
+  const deleteBooking = (id?: string) => {
+    if (!id) return;
+    Alert.alert("Delete Booking", "Are you sure you want to delete this booking?", [
+      { text: "No", style: "cancel" },
       {
         text: "Yes",
-        onPress: async () => {
-          try {
-            await deleteDoc(doc(db, "bookings", id));
-            // Remove from local state immediately
-            setBookings(bookings.filter(b => b.id !== id));
-            Alert.alert("Deleted", "Booking cancelled successfully.");
-          } catch (error) {
-            console.error("Error deleting booking:", error);
-          }
+        style: "destructive",
+        onPress: () => {
+          deleteDoc(doc(database, "bookings", id))
+            .then(() => Alert.alert("Deleted", "Booking deleted successfully."))
+            .catch((err) => {
+              console.error(err);
+              Alert.alert("Error", "Failed to delete booking.");
+            });
         },
       },
     ]);
   };
 
-  // EDIT
-  const handleEditBooking = (booking: Booking) => {
-    setForm({
-      service: booking.service,
-      date: booking.date,
-      time: booking.time,
-      stylist: booking.stylist,
-    });
-    setEditingId(booking.id || null);
-    setStep(1);
-    setModalVisible(true);
-  };
-
-  const handleSelectService = (serviceName: string) => {
-    setForm({ ...form, service: serviceName });
-    setStep(2);
-  };
-
-  const handleSelectDate = (day: number, month: number, year: number) => {
-    const monthNames = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
-    const dateStr = `${monthNames[month]} ${day}, ${year}`;
-    setForm({ ...form, date: dateStr });
-    setShowCalendar(false);
-  };
-
-  const handleNextToStylist = () => {
-    if (!form.date || !form.time) {
-      Alert.alert("Missing Info", "Please select date and enter time.");
-      return;
-    }
-    setStep(3);
-  };
-
-  const resetModal = () => {
-    setModalVisible(false);
-    setStep(1);
-    setForm({ service: "", date: "", time: "", stylist: "" });
-    setEditingId(null);
-    setShowCalendar(false);
-    setSelectedDate(null);
-    setIsSaving(false);
-  };
-
-  const resetForNextBooking = () => {
-    setStep(1);
-    setForm({ service: "", date: "", time: "", stylist: "" });
-    setEditingId(null);
-    setShowCalendar(false);
-    setSelectedDate(null);
-    setIsSaving(false);
-    setModalVisible(true);
-  };
-
-  // Simple calendar component
-  const renderCalendar = () => {
-    const now = new Date();
-    const currentMonth = now.getMonth();
-    const currentYear = now.getFullYear();
-    const daysInMonth = new Date(currentYear, currentMonth + 1, 0).getDate();
-    const firstDay = new Date(currentYear, currentMonth, 1).getDay();
-
-    const monthNames = ["JANUARY", "FEBRUARY", "MARCH", "APRIL", "MAY", "JUNE", "JULY", "AUGUST", "SEPTEMBER", "OCTOBER", "NOVEMBER", "DECEMBER"];
-    const dayNames = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
-
-    const days = [];
-    for (let i = 0; i < firstDay; i++) {
-      days.push(<View key={`empty-${i}`} style={styles.calendarDay} />);
-    }
-    for (let day = 1; day <= daysInMonth; day++) {
-      days.push(
-        <TouchableOpacity
-          key={day}
-          style={styles.calendarDay}
-          onPress={() => handleSelectDate(day, currentMonth, currentYear)}
-        >
-          <Text style={styles.calendarDayText}>{day}</Text>
-        </TouchableOpacity>
-      );
-    }
-
-    return (
-      <View style={styles.calendarContainer}>
-        <Text style={styles.calendarMonth}>{monthNames[currentMonth]} {currentYear}</Text>
-        <View style={styles.calendarHeader}>
-          {dayNames.map((day) => (
-            <Text key={day} style={styles.calendarHeaderText}>{day}</Text>
-          ))}
-        </View>
-        <View style={styles.calendarGrid}>{days}</View>
-      </View>
-    );
-  };
-
   return (
     <View style={styles.container}>
-      <Text style={styles.header}>My Appointments 💇‍♀️</Text>
+      <Text style={styles.header}>{isAdmin ? "All Bookings (Admin)" : "My Bookings"}</Text>
 
-      {bookings.length === 0 ? (
-        <Text style={styles.noBookings}>No bookings yet.</Text>
-      ) : (
-        <FlatList
-          data={bookings}
-          keyExtractor={(item) => item.id!}
-          showsVerticalScrollIndicator={false}
-          renderItem={({ item }) => (
-            <View style={styles.card}>
-              <View style={styles.cardTop}>
-                <Text style={styles.cardService}>{item.service}</Text>
-                <Text
-                  style={[
-                    styles.cardStatus,
-                    item.status === "approved" && { color: "#38A169" },
-                    item.status === "rejected" && { color: "#E53E3E" },
-                    item.status === "pending" && { color: "#D69E2E" },
-                  ]}
-                >
-                  {item.status.toUpperCase()}
-                </Text>
-              </View>
-
-              <Text style={styles.cardDetail}>
-                <Ionicons name="calendar-outline" size={14} /> {item.date}
-              </Text>
-              <Text style={styles.cardDetail}>
-                <Ionicons name="time-outline" size={14} /> {item.time}
-              </Text>
-              <Text style={styles.cardDetail}>
-                <Ionicons name="person-outline" size={14} /> {item.stylist}
-              </Text>
-
-              <View style={styles.cardActions}>
-                {item.status === "pending" && (
-                  <>
-                    <TouchableOpacity
-                      style={[styles.actionButton, { backgroundColor: "#6B46C1" }]}
-                      onPress={() => handleEditBooking(item)}
-                    >
-                      <Ionicons name="create-outline" size={16} color="#fff" />
-                      <Text style={styles.actionText}>Edit</Text>
-                    </TouchableOpacity>
-
-                    <TouchableOpacity
-                      style={[styles.actionButton, { backgroundColor: "#E53E3E" }]}
-                      onPress={() => handleDeleteBooking(item.id!)}
-                    >
-                      <Ionicons name="trash-outline" size={16} color="#fff" />
-                      <Text style={styles.actionText}>Cancel</Text>
-                    </TouchableOpacity>
-                  </>
-                )}
-              </View>
+      <FlatList
+        data={bookings}
+        keyExtractor={(item) => item.id || Math.random().toString()}
+        renderItem={({ item }) => (
+          <View style={styles.card}>
+            <Text style={styles.cardTitle}>{item.service}</Text>
+            <Text style={styles.cardText}>📅 {item.date}</Text>
+            <Text style={styles.cardText}>🕐 {item.time}</Text>
+            <Text style={styles.cardText}>✂️ {item.stylist}</Text>
+            <View style={[styles.statusBadge, item.status === 'confirmed' ? styles.statusConfirmed : styles.statusPending]}>
+              <Text style={styles.statusText}>{item.status}</Text>
             </View>
-          )}
-        />
-      )}
 
-      {/* ➕ Floating Add Button */}
-      <TouchableOpacity 
-        style={styles.addButton} 
-        onPress={() => {
-          setStep(1);
-          setForm({ service: "", date: "", time: "", stylist: "" });
-          setEditingId(null);
-          setShowCalendar(false);
-          setSelectedDate(null);
-          setModalVisible(true);
-        }}
-      >
+            <View style={styles.actions}>
+              {/* EDIT BUTTON - NEW */}
+              {(isAdmin || item.status === "pending") && (
+                <TouchableOpacity style={styles.buttonEdit} onPress={() => openEditBooking(item)}>
+                  <Text style={styles.buttonText}>Edit</Text>
+                </TouchableOpacity>
+              )}
+              
+              {/* DELETE BUTTON */}
+              {(isAdmin || item.status === "pending") && (
+                <TouchableOpacity style={styles.buttonDelete} onPress={() => deleteBooking(item.id)}>
+                  <Text style={styles.buttonText}>Cancel</Text>
+                </TouchableOpacity>
+              )}
+            </View>
+          </View>
+        )}
+      />
+
+      <TouchableOpacity style={styles.addButton} onPress={openNewBooking}>
         <Ionicons name="add-circle" size={60} color="#E0A100" />
       </TouchableOpacity>
 
-      {/* 📋 Modal Form */}
-      <Modal
-        visible={modalVisible}
-        animationType="slide"
-        transparent
-        onRequestClose={resetModal}
-      >
+      {/* Booking Modal */}
+      <Modal visible={modalVisible} transparent animationType="slide">
         <View style={styles.modalOverlay}>
           <View style={styles.modalContainer}>
-            <Text style={styles.modalHeader}>
-              {editingId ? "Edit Appointment" : "Add Appointment"}
-            </Text>
+            {/* Header with close button */}
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>
+                {editingBooking ? "Edit Appointment" : "Book Appointment"}
+              </Text>
+              <TouchableOpacity onPress={() => setModalVisible(false)}>
+                <Ionicons name="close" size={28} color="#666" />
+              </TouchableOpacity>
+            </View>
 
-            <ScrollView showsVerticalScrollIndicator={false}>
+            {/* Progress Steps */}
+            <View style={styles.progressContainer}>
+              {[1, 2, 3, 4].map((s) => (
+                <View key={s} style={styles.progressStep}>
+                  <View style={[styles.progressCircle, step >= s && styles.progressCircleActive]}>
+                    <Text style={[styles.progressNumber, step >= s && styles.progressNumberActive]}>{s}</Text>
+                  </View>
+                  {s < 4 && <View style={[styles.progressLine, step > s && styles.progressLineActive]} />}
+                </View>
+              ))}
+            </View>
+            <View style={styles.progressLabels}>
+              <Text style={styles.progressLabel}>Service</Text>
+              <Text style={styles.progressLabel}>Date</Text>
+              <Text style={styles.progressLabel}>Time</Text>
+              <Text style={styles.progressLabel}>Stylist</Text>
+            </View>
+
+            <ScrollView style={styles.modalContent}>
               {/* Step 1: Select Service */}
               {step === 1 && (
                 <View>
-                  <Text style={styles.stepTitle}>Select Service</Text>
-                  {services.map((service) => (
+                  <Text style={styles.stepTitle}>Select a Service</Text>
+                  {SERVICES.map((service) => (
                     <TouchableOpacity
-                      key={service.id}
+                      key={service}
                       style={[
-                        styles.serviceOption,
-                        form.service === service.name && styles.serviceOptionSelected,
+                        styles.serviceButton,
+                        selectedService === service && styles.serviceButtonSelected
                       ]}
-                      onPress={() => handleSelectService(service.name)}
+                      onPress={() => handleServiceSelect(service)}
                     >
-                      <Text style={styles.serviceOptionText}>{service.name}</Text>
-                      <Text style={styles.serviceOptionPrice}>{service.price}</Text>
+                      <Ionicons 
+                        name="cut" 
+                        size={20} 
+                        color={selectedService === service ? "#fff" : "#E0A100"} 
+                      />
+                      <Text style={[
+                        styles.serviceText,
+                        selectedService === service && styles.serviceTextSelected
+                      ]}>
+                        {service}
+                      </Text>
+                      <Ionicons name="chevron-forward" size={20} color={selectedService === service ? "#fff" : "#999"} />
                     </TouchableOpacity>
                   ))}
                 </View>
               )}
 
-              {/* Step 2: Select Date & Time */}
+              {/* Step 2: Select Date */}
               {step === 2 && (
                 <View>
-                  <Text style={styles.stepTitle}>Select Date & Time</Text>
-                  <Text style={styles.selectedService}>Service: {form.service}</Text>
+                  <TouchableOpacity style={styles.backButton} onPress={() => setStep(1)}>
+                    <Ionicons name="arrow-back" size={20} color="#E0A100" />
+                    <Text style={styles.backText}>Back to services</Text>
+                  </TouchableOpacity>
+                  
+                  <View style={styles.selectionSummary}>
+                    <Text style={styles.summaryText}>Service: <Text style={styles.summaryBold}>{selectedService}</Text></Text>
+                  </View>
 
-                  {showCalendar ? (
-                    renderCalendar()
-                  ) : (
-                    <TouchableOpacity
-                      style={styles.dateButton}
-                      onPress={() => setShowCalendar(true)}
-                    >
-                      <Text style={styles.dateButtonText}>
-                        {form.date || "Select Date"}
-                      </Text>
+                  <Text style={styles.stepTitle}>Select a Date</Text>
+                  
+                  {/* Month Navigation */}
+                  <View style={styles.monthNavigation}>
+                    <TouchableOpacity onPress={previousMonth} style={styles.monthButton}>
+                      <Ionicons name="chevron-back" size={24} color="#333" />
                     </TouchableOpacity>
-                  )}
+                    <Text style={styles.monthText}>{getMonthYear()}</Text>
+                    <TouchableOpacity onPress={nextMonth} style={styles.monthButton}>
+                      <Ionicons name="chevron-forward" size={24} color="#333" />
+                    </TouchableOpacity>
+                  </View>
 
-                  <TextInput
-                    placeholder="Time (e.g. 2:00 PM)"
-                    style={styles.input}
-                    value={form.time}
-                    onChangeText={(text) => setForm({ ...form, time: text })}
-                  />
+                  <Text style={styles.calendarHint}>Green dates are available</Text>
 
-                  <View style={styles.stepActions}>
-                    <TouchableOpacity
-                      style={[styles.stepButton, { backgroundColor: "#999" }]}
-                      onPress={() => setStep(1)}
-                    >
-                      <Text style={styles.stepButtonText}>Back</Text>
-                    </TouchableOpacity>
-                    <TouchableOpacity
-                      style={[styles.stepButton, { backgroundColor: "#6B46C1" }]}
-                      onPress={handleNextToStylist}
-                    >
-                      <Text style={styles.stepButtonText}>Next</Text>
-                    </TouchableOpacity>
+                  {/* Calendar */}
+                  <View style={styles.calendar}>
+                    <View style={styles.weekDays}>
+                      {['S', 'M', 'T', 'W', 'T', 'F', 'S'].map((day, idx) => (
+                        <Text key={idx} style={styles.weekDay}>{day}</Text>
+                      ))}
+                    </View>
+                    <View style={styles.calendarGrid}>
+                      {getCalendarDates().map((date, idx) => {
+                        const isAvailable = isDateAvailable(date);
+                        const dateStr = formatDate(date);
+                        const isSelected = selectedDate === dateStr;
+                        const isCurrentMonth = date.getMonth() === currentMonth.getMonth();
+
+                        return (
+                          <TouchableOpacity
+                            key={idx}
+                            onPress={() => isAvailable && handleDateSelect(dateStr)}
+                            disabled={!isAvailable}
+                            style={[
+                              styles.calendarDay,
+                              isSelected && styles.calendarDaySelected,
+                              isAvailable && styles.calendarDayAvailable,
+                              !isCurrentMonth && styles.calendarDayOtherMonth
+                            ]}
+                          >
+                            <Text style={[
+                              styles.calendarDayText,
+                              isSelected && styles.calendarDayTextSelected,
+                              isAvailable && !isSelected && styles.calendarDayTextAvailable,
+                              !isAvailable && styles.calendarDayTextDisabled
+                            ]}>
+                              {date.getDate()}
+                            </Text>
+                          </TouchableOpacity>
+                        );
+                      })}
+                    </View>
                   </View>
                 </View>
               )}
 
-              {/* Step 3: Add Stylist */}
+              {/* Step 3: Select Time */}
               {step === 3 && (
                 <View>
-                  <Text style={styles.stepTitle}>Add Stylist</Text>
-                  <Text style={styles.selectedService}>Service: {form.service}</Text>
-                  <Text style={styles.selectedService}>Date: {form.date}</Text>
-                  <Text style={styles.selectedService}>Time: {form.time}</Text>
-
-                  <TextInput
-                    placeholder="Stylist (e.g. Ella)"
-                    style={styles.input}
-                    value={form.stylist}
-                    onChangeText={(text) => setForm({ ...form, stylist: text })}
-                  />
-
-                  <View style={styles.stepActions}>
-                    <TouchableOpacity
-                      style={[styles.stepButton, { backgroundColor: "#999" }]}
-                      onPress={() => setStep(2)}
-                      disabled={isSaving}
-                    >
-                      <Text style={styles.stepButtonText}>Back</Text>
-                    </TouchableOpacity>
-                    <TouchableOpacity
-                      style={[styles.stepButton, { backgroundColor: isSaving ? "#999" : "#6B46C1" }]}
-                      onPress={handleSaveBooking}
-                      disabled={isSaving}
-                    >
-                      <Text style={styles.stepButtonText}>{isSaving ? "Saving..." : "Save"}</Text>
-                    </TouchableOpacity>
+                  <TouchableOpacity style={styles.backButton} onPress={() => setStep(2)}>
+                    <Ionicons name="arrow-back" size={20} color="#E0A100" />
+                    <Text style={styles.backText}>Back to calendar</Text>
+                  </TouchableOpacity>
+                  
+                  <View style={styles.selectionSummary}>
+                    <Text style={styles.summaryText}>Service: <Text style={styles.summaryBold}>{selectedService}</Text></Text>
+                    <Text style={styles.summaryText}>Date: <Text style={styles.summaryBold}>{selectedDate}</Text></Text>
                   </View>
+
+                  <Text style={styles.stepTitle}>Select Time</Text>
+                  <View style={styles.timeGrid}>
+                    {TIME_SLOTS.map((time) => (
+                      <TouchableOpacity
+                        key={time}
+                        style={[styles.timeSlot, selectedTime === time && styles.timeSlotSelected]}
+                        onPress={() => handleTimeSelect(time)}
+                      >
+                        <Text style={[styles.timeText, selectedTime === time && styles.timeTextSelected]}>{time}</Text>
+                      </TouchableOpacity>
+                    ))}
+                  </View>
+                </View>
+              )}
+
+              {/* Step 4: Select Stylist */}
+              {step === 4 && (
+                <View>
+                  <TouchableOpacity style={styles.backButton} onPress={() => setStep(3)}>
+                    <Ionicons name="arrow-back" size={20} color="#E0A100" />
+                    <Text style={styles.backText}>Back to time</Text>
+                  </TouchableOpacity>
+                  
+                  <View style={styles.selectionSummary}>
+                    <Text style={styles.summaryText}>Service: <Text style={styles.summaryBold}>{selectedService}</Text></Text>
+                    <Text style={styles.summaryText}>Date: <Text style={styles.summaryBold}>{selectedDate}</Text></Text>
+                    <Text style={styles.summaryText}>Time: <Text style={styles.summaryBold}>{selectedTime}</Text></Text>
+                  </View>
+
+                  <Text style={styles.stepTitle}>Select Stylist</Text>
+                  {STYLISTS.map((stylist) => (
+                    <TouchableOpacity
+                      key={stylist}
+                      style={[styles.stylistButton, selectedStylist === stylist && styles.stylistButtonSelected]}
+                      onPress={() => handleStylistSelect(stylist)}
+                    >
+                      <Ionicons name="person" size={20} color={selectedStylist === stylist ? "#fff" : "#E0A100"} />
+                      <Text style={[styles.stylistText, selectedStylist === stylist && styles.stylistTextSelected]}>{stylist}</Text>
+                      {selectedStylist === stylist && <Ionicons name="checkmark-circle" size={20} color="#fff" />}
+                    </TouchableOpacity>
+                  ))}
+
+                  {selectedStylist && (
+                    <View style={styles.finalActions}>
+                      <TouchableOpacity style={styles.confirmButton} onPress={saveBooking}>
+                        <Text style={styles.confirmButtonText}>
+                          {editingBooking ? "Update Booking" : "Confirm Booking"}
+                        </Text>
+                      </TouchableOpacity>
+                    </View>
+                  )}
                 </View>
               )}
             </ScrollView>
-
-            <TouchableOpacity
-              style={styles.closeButton}
-              onPress={resetModal}
-            >
-              <Text style={styles.closeButtonText}>Close</Text>
-            </TouchableOpacity>
           </View>
         </View>
       </Modal>
@@ -534,43 +501,87 @@ export default function BookingScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: "#F9F7FF", padding: 16 },
-  header: { fontSize: 24, fontWeight: "700", color: "#4B2E83", textAlign: "center", marginBottom: 10 },
-  noBookings: { textAlign: "center", marginTop: 40, color: "#666" },
-  card: { backgroundColor: "#fff", borderRadius: 16, padding: 16, marginBottom: 12, borderWidth: 1, borderColor: "#E9D8FD" },
-  cardTop: { flexDirection: "row", justifyContent: "space-between", alignItems: "center" },
-  cardService: { fontSize: 18, fontWeight: "700", color: "#4B2E83" },
-  cardStatus: { fontSize: 14, fontWeight: "600" },
-  cardDetail: { color: "#555", marginTop: 4, fontSize: 14 },
-  cardActions: { flexDirection: "row", justifyContent: "flex-end", marginTop: 10 },
-  actionButton: { flexDirection: "row", alignItems: "center", borderRadius: 8, paddingHorizontal: 10, paddingVertical: 6, marginLeft: 8 },
-  actionText: { color: "#fff", fontWeight: "600", marginLeft: 4 },
+  container: { flex: 1, padding: 16, backgroundColor: "#FFF7E6" },
+  header: { fontSize: 24, fontWeight: "700", marginBottom: 12, textAlign: "center" },
+  card: { backgroundColor: "#fff", padding: 16, borderRadius: 12, marginBottom: 12, elevation: 2, shadowColor: "#000", shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.1, shadowRadius: 4 },
+  cardTitle: { fontSize: 18, fontWeight: "700", marginBottom: 8, color: "#333" },
+  cardText: { marginBottom: 4, fontSize: 14, color: "#666" },
+  statusBadge: { alignSelf: "flex-start", paddingHorizontal: 12, paddingVertical: 4, borderRadius: 12, marginTop: 8 },
+  statusConfirmed: { backgroundColor: "#10B981" },
+  statusPending: { backgroundColor: "#F59E0B" },
+  statusText: { color: "#fff", fontSize: 12, fontWeight: "600" },
+  actions: { flexDirection: "row", marginTop: 12, gap: 8 },
+  buttonEdit: { flex: 1, backgroundColor: "#3B82F6", padding: 10, borderRadius: 8, alignItems: "center" },
+  buttonDelete: { flex: 1, backgroundColor: "#E53E3E", padding: 10, borderRadius: 8, alignItems: "center" },
+  buttonText: { color: "#fff", fontWeight: "600" },
   addButton: { position: "absolute", bottom: 20, right: 20 },
-  modalOverlay: { flex: 1, backgroundColor: "rgba(0,0,0,0.4)", justifyContent: "center", alignItems: "center" },
-  modalContainer: { backgroundColor: "#fff", borderRadius: 16, width: "90%", padding: 20, maxHeight: "80%" },
-  modalHeader: { fontSize: 20, fontWeight: "700", color: "#4B2E83", textAlign: "center", marginBottom: 12 },
-  input: { borderWidth: 1, borderColor: "#D6BCFA", borderRadius: 10, padding: 10, marginVertical: 6, fontSize: 14 },
-  stepTitle: { fontSize: 16, fontWeight: "600", color: "#4B2E83", marginBottom: 12 },
-  serviceOption: { borderWidth: 1, borderColor: "#D6BCFA", borderRadius: 10, padding: 12, marginBottom: 8, flexDirection: "row", justifyContent: "space-between", alignItems: "center" },
-  serviceOptionSelected: { backgroundColor: "#E9D8FD", borderColor: "#6B46C1" },
-  serviceOptionText: { fontSize: 14, fontWeight: "600", color: "#4B2E83" },
-  serviceOptionPrice: { fontSize: 12, color: "#666" },
-  selectedService: { fontSize: 13, color: "#666", marginBottom: 6 },
-  dateButton: { borderWidth: 1, borderColor: "#D6BCFA", borderRadius: 10, padding: 12, marginVertical: 6, alignItems: "center" },
-  dateButtonText: { fontSize: 14, color: "#4B2E83" },
-  stepActions: { flexDirection: "row", justifyContent: "space-between", marginTop: 16 },
-  stepButton: { flex: 1, paddingVertical: 10, borderRadius: 10, marginHorizontal: 4, alignItems: "center" },
-  stepButtonText: { color: "#fff", fontWeight: "600" },
-  closeButton: { marginTop: 12, paddingVertical: 8, alignItems: "center" },
-  closeButtonText: { color: "#E53E3E", fontWeight: "600" },
-  calendarContainer: { backgroundColor: "#fff", borderRadius: 12, padding: 12, marginVertical: 8 },
-  calendarMonth: { fontSize: 14, fontWeight: "700", color: "#4B2E83", textAlign: "center", marginBottom: 8 },
-  calendarHeader: { flexDirection: "row", justifyContent: "space-around", marginBottom: 8 },
-  calendarHeaderText: { fontSize: 12, fontWeight: "600", color: "#38A169", width: "14%" , textAlign: "center" },
+  
+  // Modal styles
+  modalOverlay: { flex: 1, backgroundColor: "rgba(0,0,0,0.5)", justifyContent: "center", padding: 16 },
+  modalContainer: { backgroundColor: "#fff", borderRadius: 16, maxHeight: "90%", overflow: "hidden" },
+  modalHeader: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", padding: 16, borderBottomWidth: 1, borderBottomColor: "#E5E7EB" },
+  modalTitle: { fontSize: 20, fontWeight: "700" },
+  modalContent: { padding: 16 },
+  
+  // Progress styles
+  progressContainer: { flexDirection: "row", justifyContent: "space-between", paddingHorizontal: 16, paddingTop: 16 },
+  progressStep: { flexDirection: "row", alignItems: "center", flex: 1 },
+  progressCircle: { width: 32, height: 32, borderRadius: 16, backgroundColor: "#E5E7EB", justifyContent: "center", alignItems: "center" },
+  progressCircleActive: { backgroundColor: "#E0A100" },
+  progressNumber: { fontSize: 14, fontWeight: "600", color: "#666" },
+  progressNumberActive: { color: "#fff" },
+  progressLine: { flex: 1, height: 2, backgroundColor: "#E5E7EB", marginHorizontal: 4 },
+  progressLineActive: { backgroundColor: "#E0A100" },
+  progressLabels: { flexDirection: "row", justifyContent: "space-between", paddingHorizontal: 8, paddingTop: 8, paddingBottom: 16 },
+  progressLabel: { fontSize: 10, color: "#666", flex: 1, textAlign: "center" },
+  
+  // Step styles
+  stepTitle: { fontSize: 18, fontWeight: "700", marginBottom: 16, color: "#333" },
+  backButton: { flexDirection: "row", alignItems: "center", marginBottom: 12 },
+  backText: { marginLeft: 8, color: "#E0A100", fontSize: 14, fontWeight: "600" },
+  selectionSummary: { backgroundColor: "#FFF7E6", padding: 12, borderRadius: 8, marginBottom: 16 },
+  summaryText: { fontSize: 13, color: "#666", marginBottom: 4 },
+  summaryBold: { fontWeight: "700", color: "#333" },
+  
+  // Service selection
+  serviceButton: { flexDirection: "row", alignItems: "center", padding: 16, backgroundColor: "#fff", borderWidth: 2, borderColor: "#E5E7EB", borderRadius: 10, marginBottom: 10 },
+  serviceButtonSelected: { backgroundColor: "#E0A100", borderColor: "#E0A100" },
+  serviceText: { flex: 1, marginLeft: 12, fontSize: 15, fontWeight: "500", color: "#333" },
+  serviceTextSelected: { color: "#fff", fontWeight: "700" },
+  
+  // Calendar styles
+  monthNavigation: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", backgroundColor: "#FFF7E6", padding: 12, borderRadius: 8, marginBottom: 8 },
+  monthButton: { padding: 8 },
+  monthText: { fontSize: 16, fontWeight: "700", color: "#333" },
+  calendarHint: { fontSize: 12, color: "#666", marginBottom: 12, textAlign: "center" },
+  calendar: { marginBottom: 16 },
+  weekDays: { flexDirection: "row", justifyContent: "space-around", marginBottom: 8 },
+  weekDay: { fontSize: 12, fontWeight: "600", color: "#666", width: 40, textAlign: "center" },
   calendarGrid: { flexDirection: "row", flexWrap: "wrap" },
-  calendarDay: { width: "14%", aspectRatio: 1, justifyContent: "center", alignItems: "center", marginBottom: 4 },
-  calendarDayText: { fontSize: 13, color: "#4B2E83" },
-  modalActions: { flexDirection: "row", justifyContent: "space-between", marginTop: 10 },
-  modalButton: { flex: 1, paddingVertical: 10, borderRadius: 10, marginHorizontal: 4, alignItems: "center" },
-  modalButtonText: { color: "#fff", fontWeight: "700" },
+  calendarDay: { width: "14.28%", aspectRatio: 1, justifyContent: "center", alignItems: "center", padding: 4 },
+  calendarDayAvailable: { backgroundColor: "#D1FAE5", borderWidth: 2, borderColor: "#10B981", borderRadius: 8 },
+  calendarDaySelected: { backgroundColor: "#E0A100", borderColor: "#E0A100" },
+  calendarDayOtherMonth: { opacity: 0.3 },
+  calendarDayText: { fontSize: 14, color: "#999" },
+  calendarDayTextAvailable: { color: "#059669", fontWeight: "600" },
+  calendarDayTextSelected: { color: "#fff", fontWeight: "700" },
+  calendarDayTextDisabled: { color: "#D1D5DB" },
+  
+  // Time selection
+  timeGrid: { flexDirection: "row", flexWrap: "wrap", justifyContent: "space-between" },
+  timeSlot: { width: "48%", padding: 16, backgroundColor: "#fff", borderWidth: 2, borderColor: "#E5E7EB", borderRadius: 8, marginBottom: 10, alignItems: "center" },
+  timeSlotSelected: { backgroundColor: "#E0A100", borderColor: "#E0A100" },
+  timeText: { fontSize: 14, fontWeight: "500", color: "#333" },
+  timeTextSelected: { color: "#fff", fontWeight: "700" },
+  
+  // Stylist selection
+  stylistButton: { flexDirection: "row", alignItems: "center", padding: 16, backgroundColor: "#fff", borderWidth: 2, borderColor: "#E5E7EB", borderRadius: 10, marginBottom: 10 },
+  stylistButtonSelected: { backgroundColor: "#E0A100", borderColor: "#E0A100" },
+  stylistText: { flex: 1, marginLeft: 12, fontSize: 15, fontWeight: "500", color: "#333" },
+  stylistTextSelected: { color: "#fff", fontWeight: "700" },
+  
+  // Final actions
+  finalActions: { marginTop: 16 },
+  confirmButton: { backgroundColor: "#10B981", padding: 16, borderRadius: 10, alignItems: "center" },
+  confirmButtonText: { color: "#fff", fontSize: 16, fontWeight: "700" },
 });
