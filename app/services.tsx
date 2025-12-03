@@ -14,12 +14,11 @@ import {
 import { Service, getServices } from "../constants/servicesData";
 
 // Animated Card Component
-const AnimatedServiceCard = ({ item, index, isFavorite, onToggleFavorite }: { item: Service; index: number; isFavorite: boolean; onToggleFavorite: (id: string) => void }) => {
+const AnimatedServiceCard = ({ item, index }: { item: Service; index: number }) => {
   const router = useRouter();
   const [fadeAnim] = useState(new Animated.Value(0));
   const [slideAnim] = useState(new Animated.Value(50));
   const [scaleAnim] = useState(new Animated.Value(1));
-  const [heartScale] = useState(new Animated.Value(1));
 
   useEffect(() => {
     Animated.parallel([
@@ -55,24 +54,6 @@ const AnimatedServiceCard = ({ item, index, isFavorite, onToggleFavorite }: { it
     }).start();
   };
 
-  const handleFavoritePress = () => {
-    // Animate heart
-    Animated.sequence([
-      Animated.spring(heartScale, {
-        toValue: 1.3,
-        friction: 3,
-        useNativeDriver: true,
-      }),
-      Animated.spring(heartScale, {
-        toValue: 1,
-        friction: 3,
-        useNativeDriver: true,
-      }),
-    ]).start();
-    
-    onToggleFavorite(item.id);
-  };
-
   return (
     <Animated.View
       style={[
@@ -99,22 +80,7 @@ const AnimatedServiceCard = ({ item, index, isFavorite, onToggleFavorite }: { it
           </View>
         </View>
         <View style={styles.cardContent}>
-          <View style={styles.serviceHeader}>
-            <Text style={styles.serviceName}>{item.name}</Text>
-            <TouchableOpacity 
-              style={styles.heartButton}
-              onPress={handleFavoritePress}
-              activeOpacity={0.7}
-            >
-              <Animated.View style={{ transform: [{ scale: heartScale }] }}>
-                <Ionicons 
-                  name={isFavorite ? "heart" : "heart-outline"} 
-                  size={22} 
-                  color={isFavorite ? "#EF4444" : "#7C3AED"} 
-                />
-              </Animated.View>
-            </TouchableOpacity>
-          </View>
+          <Text style={styles.serviceName}>{item.name}</Text>
           <Text style={styles.description}>{item.description}</Text>
 
           <AnimatedButton onPress={() => router.push("/booking")} />
@@ -127,6 +93,7 @@ const AnimatedServiceCard = ({ item, index, isFavorite, onToggleFavorite }: { it
 // Animated Button Component
 const AnimatedButton = ({ onPress }: { onPress: () => void }) => {
   const [scaleValue] = useState(new Animated.Value(1));
+  const [ctaAnim] = useState(new Animated.Value(0));
 
   const handlePressIn = () => {
     Animated.spring(scaleValue, {
@@ -138,15 +105,22 @@ const AnimatedButton = ({ onPress }: { onPress: () => void }) => {
   const handlePressOut = () => {
     Animated.spring(scaleValue, {
       toValue: 1,
-      friction: 3,
-      tension: 40,
+      friction: 4,
+      tension: 50,
       useNativeDriver: true,
     }).start();
   };
 
+  const handlePress = () => {
+    Animated.timing(ctaAnim, { toValue: 24, duration: 180, useNativeDriver: true }).start(() => {
+      ctaAnim.setValue(0);
+      onPress();
+    });
+  };
+
   return (
     <TouchableOpacity
-      onPress={onPress}
+      onPress={handlePress}
       onPressIn={handlePressIn}
       onPressOut={handlePressOut}
       activeOpacity={1}
@@ -155,7 +129,7 @@ const AnimatedButton = ({ onPress }: { onPress: () => void }) => {
         style={[
           styles.button,
           {
-            transform: [{ scale: scaleValue }],
+            transform: [{ scale: scaleValue }, { translateX: ctaAnim }],
           },
         ]}
       >
@@ -168,22 +142,10 @@ const AnimatedButton = ({ onPress }: { onPress: () => void }) => {
 };
 
 export default function ServicesScreen() {
+  const router = useRouter();
   const [headerFade] = useState(new Animated.Value(0));
   const [headerSlide] = useState(new Animated.Value(-30));
-  const [favorites, setFavorites] = useState<Set<string>>(new Set());
   const [servicesData, setServicesData] = useState<Service[]>(getServices());
-
-  const toggleFavorite = (id: string) => {
-    setFavorites(prev => {
-      const newFavorites = new Set(prev);
-      if (newFavorites.has(id)) {
-        newFavorites.delete(id);
-      } else {
-        newFavorites.add(id);
-      }
-      return newFavorites;
-    });
-  };
 
   useEffect(() => {
     Animated.parallel([
@@ -205,8 +167,6 @@ export default function ServicesScreen() {
     <AnimatedServiceCard 
       item={item} 
       index={index} 
-      isFavorite={favorites.has(item.id)}
-      onToggleFavorite={toggleFavorite}
     />
   );
 
@@ -221,6 +181,17 @@ export default function ServicesScreen() {
           },
         ]}
       >
+        {/* Page Switcher */}
+        <View style={styles.switcherRow}>
+          <TouchableOpacity>
+            <Text style={[styles.switcherLink, styles.switcherActive]}>Services</Text>
+          </TouchableOpacity>
+          <Text style={styles.switcherSep}> | </Text>
+          <TouchableOpacity onPress={() => router.push('/promodeals')}>
+            <Text style={styles.switcherLink}>Promo Deals</Text>
+          </TouchableOpacity>
+        </View>
+
         <View style={styles.headerContent}>
           <Text style={styles.header}>Our Services</Text>
           <Ionicons name="cut" size={28} color="#7C3AED" />
@@ -251,11 +222,32 @@ const styles = StyleSheet.create({
   },
   headerContainer: {
     paddingHorizontal: 24,
-    paddingTop: 60,
+    paddingTop: 24,
     paddingBottom: 24,
     backgroundColor: "#FFFFFF",
     borderBottomWidth: 1,
     borderBottomColor: "#F3F4F6",
+  },
+  switcherRow: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 6,
+  },
+  switcherLink: {
+    fontSize: 15,
+    fontWeight: '700',
+    color: '#6B7280',
+  },
+  switcherActive: {
+    color: '#7C3AED',
+    fontWeight: '800',
+  },
+  switcherSep: {
+    color: '#D1D5DB',
+    marginHorizontal: 10,
+    fontWeight: '800',
+    fontSize: 16,
   },
   headerContent: {
     flexDirection: "row",
@@ -328,22 +320,12 @@ const styles = StyleSheet.create({
   cardContent: {
     padding: 20,
   },
-  serviceHeader: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    marginBottom: 8,
-  },
   serviceName: {
     fontSize: 20,
     fontWeight: "700",
     color: "#1F2937",
     letterSpacing: -0.3,
-    flex: 1,
-  },
-  heartButton: {
-    padding: 4,
-    marginLeft: 8,
+    marginBottom: 8,
   },
   description: {
     fontSize: 14,

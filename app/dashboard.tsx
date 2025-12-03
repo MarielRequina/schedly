@@ -1,22 +1,24 @@
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
+
 import { doc, getDoc } from "firebase/firestore";
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
+
 import {
   Animated,
   Dimensions,
   FlatList,
   Image,
-  ScrollView,
   StatusBar,
   StyleSheet,
   Text,
   TextInput,
   TouchableOpacity,
-  View,
+  View
 } from "react-native";
 
 import { Authentication, database } from "../constants/firebaseConfig";
+import { getPromos, getServices } from "../constants/servicesData";
 
 // Constants
 const COLORS = {
@@ -50,6 +52,8 @@ const SHADOWS = {
 };
 
 const { width: SCREEN_WIDTH } = Dimensions.get("window");
+const PROMO_ITEM_WIDTH = SCREEN_WIDTH - 100;
+const PROMO_ITEM_GAP = 16;
 
 // Animated Button Component
 const AnimatedButton = ({ children, onPress, style }: any) => {
@@ -73,63 +77,64 @@ const AnimatedButton = ({ children, onPress, style }: any) => {
 export default function Dashboard() {
   const router = useRouter();
   const [userName, setUserName] = useState("Guest");
+
   const [fadeAnim] = useState(new Animated.Value(0));
+  const [ctaAnim] = useState(new Animated.Value(0));
+  const scrollY = useRef(new Animated.Value(0)).current;
+  const [searchQuery, setSearchQuery] = useState("");
+  const [seeAllSvcAnim] = useState(new Animated.Value(0));
+  const [seeAllDealsAnim] = useState(new Animated.Value(0));
 
-  const services = [
-    { 
-      id: "1", 
-      name: "Haircut", 
-      icon: "cut" as const,
-      image: "https://images.unsplash.com/photo-1599351431202-1e0f0137899a?w=400"
-    },
-    { 
-      id: "2", 
-      name: "Styling", 
-      icon: "brush" as const,
-      image: "https://images.unsplash.com/photo-1562322140-8baeececf3df?w=400"
-    },
-    { 
-      id: "3", 
-      name: "Coloring", 
-      icon: "color-palette" as const,
-      image: "https://images.unsplash.com/photo-1560066984-138dadb4c035?w=400"
-    },
-    { 
-      id: "4", 
-      name: "Treatment", 
-      icon: "water" as const,
-      image: "https://images.unsplash.com/photo-1519415387722-a1c3bbef716c?w=400"
-    },
-  ];
+  const promoListRef = useRef<FlatList<any>>(null);
+  const [promoIndex, setPromoIndex] = useState(0);
+  const autoTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
-  const promoDeals = [
-    { 
-      id: "1", 
-      title: "30% Off Hair Rebond", 
-      description: "Get silky, straight hair this season!", 
-      price: "₱1,225",
-      oldPrice: "₱1,750",
-      badge: "HOT",
-      color: "#EF4444"
-    },
-    { 
-      id: "2", 
-      title: "Free Manicure Bundle", 
-      description: "Book haircut and get free manicure.", 
-      price: "Save ₱250",
-      badge: "BUNDLE",
-      color: "#F59E0B"
-    },
-    { 
-      id: "3", 
-      title: "Holiday Makeup Glow", 
-      description: "25% off all makeup sessions.", 
-      price: "₱1,500",
-      oldPrice: "₱2,000",
-      badge: "LIMITED",
-      color: "#8B5CF6"
-    },
-  ];
+  const displayName = userName ? userName.charAt(0).toUpperCase() + userName.slice(1) : "User";
+
+  const startAutoScroll = () => {
+    if (autoTimerRef.current || !promoDeals.length) return;
+    autoTimerRef.current = setInterval(() => {
+      setPromoIndex((prev) => {
+        const next = (prev + 1) % promoDeals.length;
+        try {
+          promoListRef.current?.scrollToIndex({ index: next, animated: true });
+        } catch {}
+        return next;
+      });
+    }, 3000);
+  };
+
+  const stopAutoScroll = () => {
+    if (autoTimerRef.current) {
+      clearInterval(autoTimerRef.current);
+      autoTimerRef.current = null;
+    }
+  };
+
+  type Service = {
+    id: string;
+    name: string;
+    image: string;
+  };
+
+  const services: Service[] = getServices().map((s) => ({
+    id: s.id,
+    name: s.name,
+    image: s.image.uri,
+  }));
+
+  const promoDeals = getPromos().map((p) => ({
+    id: p.id,
+    title: p.title,
+    description: p.description,
+    price: p.discount,
+    oldPrice: undefined as string | undefined,
+    badge: p.badge || undefined,
+    image: p.image.uri,
+  }));
+
+  const filteredServices = services.filter(s => s.name.toLowerCase().includes(searchQuery.toLowerCase()));
+  const filteredPromos = promoDeals.filter(p => p.title.toLowerCase().includes(searchQuery.toLowerCase()));
 
   useEffect(() => {
     const fetchUserName = async () => {
@@ -148,23 +153,43 @@ export default function Dashboard() {
     Animated.timing(fadeAnim, { toValue: 1, duration: 600, useNativeDriver: true }).start();
   }, []);
 
+  // Auto-scroll Hot Deals horizontally in a loop, pausing during user interaction
+  useEffect(() => {
+    startAutoScroll();
+    return () => stopAutoScroll();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const handleHeroCta = () => {
+    Animated.timing(ctaAnim, { toValue: 24, duration: 180, useNativeDriver: true }).start(() => {
+      ctaAnim.setValue(0);
+      router.push("/booking");
+    });
+  };
+
   return (
     <>
       <StatusBar barStyle="dark-content" backgroundColor={COLORS.white} />
 
-      <ScrollView
+      <Animated.ScrollView
         style={styles.container}
         contentContainerStyle={{ paddingBottom: 100 }}
         showsVerticalScrollIndicator={false}
+        onScroll={Animated.event(
+          [{ nativeEvent: { contentOffset: { y: scrollY } } }],
+          { useNativeDriver: true }
+        )}
+        scrollEventThrottle={16}
       >
         {/* Header */}
         <Animated.View style={[styles.header, { opacity: fadeAnim }]}>
-          <View>
-            <Text style={styles.greeting}>Hello, {userName}! 👋</Text>
+          <View style={styles.headerLeft}>
+            <Text style={styles.greeting}>Hello, {displayName}! 👋</Text>
             <Text style={styles.subGreeting}>Book your perfect style today</Text>
           </View>
-          <TouchableOpacity onPress={() => router.push('/profile')} style={styles.profileButton}>
-            <Ionicons name="person" size={20} color={COLORS.gray900} />
+
+          <TouchableOpacity onPress={() => router.push('/notifications')} style={styles.profileButton}>
+            <Ionicons name="notifications-outline" size={20} color={COLORS.gray900} />
           </TouchableOpacity>
         </Animated.View>
 
@@ -175,8 +200,44 @@ export default function Dashboard() {
             placeholder="Search services, deals..."
             placeholderTextColor={COLORS.gray400}
             style={styles.searchInput}
+            value={searchQuery}
+            onChangeText={setSearchQuery}
+            returnKeyType="search"
+            onSubmitEditing={() => {
+              if (filteredServices.length) router.push("/services");
+              else if (filteredPromos.length) router.push("/promodeals");
+            }}
           />
+          {!!searchQuery && (
+            <TouchableOpacity onPress={() => setSearchQuery("")}> 
+              <Ionicons name="close-circle" size={18} color={COLORS.gray400} />
+            </TouchableOpacity>
+          )}
         </View>
+
+        {searchQuery.length > 0 && (
+          <View style={[styles.searchResults, SHADOWS.small]}>
+            {filteredServices.length > 0 && (
+              <Text style={styles.resultSection}>Services</Text>
+            )}
+            {filteredServices.slice(0, 5).map(s => (
+              <TouchableOpacity key={`svc-${s.id}`} style={styles.resultRow} onPress={() => router.push("/services")}>
+                <Text style={styles.resultText}>{s.name}</Text>
+              </TouchableOpacity>
+            ))}
+            {filteredPromos.length > 0 && (
+              <Text style={[styles.resultSection, { marginTop: filteredServices.length ? 6 : 0 }]}>Deals</Text>
+            )}
+            {filteredPromos.slice(0, 5).map(p => (
+              <TouchableOpacity key={`pro-${p.id}`} style={styles.resultRow} onPress={() => router.push("/promodeals")}>
+                <Text style={styles.resultText}>{p.title}</Text>
+              </TouchableOpacity>
+            ))}
+            {filteredServices.length === 0 && filteredPromos.length === 0 && (
+              <Text style={styles.noResults}>No matches</Text>
+            )}
+          </View>
+        )}
 
         {/* Hero Banner */}
         <AnimatedButton 
@@ -195,18 +256,34 @@ export default function Dashboard() {
             </View>
             <Text style={styles.heroTitle}>Transform Your Look</Text>
             <Text style={styles.heroSubtitle}>Expert stylists ready to serve you</Text>
-            <View style={styles.heroButton}>
-              <Text style={styles.heroButtonText}>Book Now</Text>
-              <Ionicons name="arrow-forward" size={16} color={COLORS.primary} />
-            </View>
+            <TouchableOpacity onPress={handleHeroCta} activeOpacity={0.8}>
+              <Animated.View style={[
+                styles.heroButton,
+                {
+                  transform: [{ translateX: ctaAnim }],
+                  opacity: scrollY.interpolate({ inputRange: [0, 60], outputRange: [1, 0], extrapolate: 'clamp' }),
+                },
+              ]}>
+                <Text style={styles.heroButtonText}>Book Now</Text>
+                <Ionicons name="arrow-forward" size={16} color={COLORS.primary} />
+              </Animated.View>
+            </TouchableOpacity>
           </View>
         </AnimatedButton>
 
         {/* Services Section */}
         <View style={styles.sectionHeader}>
           <Text style={styles.sectionTitle}>Our Services</Text>
-          <TouchableOpacity onPress={() => router.push("/services")}>
-            <Text style={styles.seeAll}>See All →</Text>
+          <TouchableOpacity
+            onPress={() => {
+              Animated.timing(seeAllSvcAnim, { toValue: 16, duration: 160, useNativeDriver: true }).start(() => {
+                seeAllSvcAnim.setValue(0);
+                router.push("/services");
+              });
+            }}
+            activeOpacity={0.8}
+          >
+            <Animated.Text style={[styles.seeAll, { transform: [{ translateX: seeAllSvcAnim }] }]}>See All →</Animated.Text>
           </TouchableOpacity>
         </View>
 
@@ -219,10 +296,9 @@ export default function Dashboard() {
           renderItem={({ item }) => (
             <AnimatedButton onPress={() => router.push("/services")}>
               <View style={[styles.serviceCard, SHADOWS.small]}>
-                <View style={styles.serviceIconContainer}>
-                  <Ionicons name={item.icon} size={28} color={COLORS.primary} />
-                </View>
-                <Text style={styles.serviceName}>{item.name}</Text>
+                <Image source={{ uri: item.image }} style={styles.serviceImage} />
+                <View style={styles.serviceOverlay} />
+                <Text style={styles.serviceLabel}>{item.name}</Text>
               </View>
             </AnimatedButton>
           )}
@@ -231,23 +307,54 @@ export default function Dashboard() {
         {/* Hot Deals Section */}
         <View style={styles.sectionHeader}>
           <Text style={styles.sectionTitle}>Hot Deals 🔥</Text>
-          <TouchableOpacity onPress={() => router.push("/promodeals")}>
-            <Text style={styles.seeAll}>See All →</Text>
+          <TouchableOpacity
+            onPress={() => {
+              Animated.timing(seeAllDealsAnim, { toValue: 16, duration: 160, useNativeDriver: true }).start(() => {
+                seeAllDealsAnim.setValue(0);
+                router.push("/promodeals");
+              });
+            }}
+            activeOpacity={0.8}
+          >
+            <Animated.Text style={[styles.seeAll, { transform: [{ translateX: seeAllDealsAnim }] }]}>See All →</Animated.Text>
           </TouchableOpacity>
         </View>
 
         <FlatList
+          ref={promoListRef}
           data={promoDeals}
           horizontal
           showsHorizontalScrollIndicator={false}
           contentContainerStyle={styles.promoList}
           keyExtractor={(item) => item.id}
+          snapToInterval={PROMO_ITEM_WIDTH + PROMO_ITEM_GAP}
+          decelerationRate="fast"
+          disableIntervalMomentum
+          onScrollBeginDrag={stopAutoScroll}
+          onMomentumScrollEnd={(e) => {
+            const x = e.nativeEvent.contentOffset.x || 0;
+            const idx = Math.round(x / (PROMO_ITEM_WIDTH + PROMO_ITEM_GAP));
+            setPromoIndex(idx % promoDeals.length);
+            startAutoScroll();
+          }}
+          getItemLayout={(_, index) => ({
+            length: PROMO_ITEM_WIDTH + PROMO_ITEM_GAP,
+            offset: (PROMO_ITEM_WIDTH + PROMO_ITEM_GAP) * index,
+            index,
+          })}
+          onScrollToIndexFailed={({ index }) => {
+            setTimeout(() => promoListRef.current?.scrollToIndex({ index, animated: true }), 250);
+          }}
           renderItem={({ item }) => (
             <AnimatedButton onPress={() => router.push("/promodeals")}>
-              <View style={[styles.promoCard, SHADOWS.medium, { backgroundColor: item.color }]}>
-                <View style={styles.promoBadge}>
-                  <Text style={styles.promoBadgeText}>{item.badge}</Text>
-                </View>
+              <View style={[styles.promoCard, SHADOWS.medium]}>
+                <Image source={{ uri: item.image }} style={styles.promoImage} />
+                <View style={styles.promoImageOverlay} />
+                {item.badge && (
+                  <View style={styles.promoBadge}>
+                    <Text style={styles.promoBadgeText}>{item.badge}</Text>
+                  </View>
+                )}
                 <Text style={styles.promoTitle}>{item.title}</Text>
                 <Text style={styles.promoDescription}>{item.description}</Text>
                 <View style={styles.priceContainer}>
@@ -261,39 +368,27 @@ export default function Dashboard() {
           )}
         />
 
-        {/* Salon Info Card */}
-        <View style={[styles.salonCard, SHADOWS.medium]}>
-          <Image
-            source={{ uri: "https://images.unsplash.com/photo-1560066984-138dadb4c035?w=800" }}
-            style={styles.salonImage}
-          />
-          <View style={styles.salonInfo}>
-            <View style={styles.salonHeader}>
-              <View>
-                <Text style={styles.salonName}>Schedly Salon</Text>
-                <View style={styles.locationRow}>
-                  <Ionicons name="location" size={14} color={COLORS.gray600} />
-                  <Text style={styles.location}>Matina, Davao City</Text>
-                </View>
-              </View>
-              <View style={styles.ratingBox}>
-                <Ionicons name="star" size={16} color="#FFC857" />
-                <Text style={styles.rating}>4.9</Text>
-              </View>
-            </View>
-            <Text style={styles.salonDescription}>
-              Expert stylists and premium treatments. Your beauty destination.
-            </Text>
-            <AnimatedButton 
-              style={[styles.bookButton, SHADOWS.small]} 
-              onPress={() => router.push("/booking")}
-            >
-              <Text style={styles.bookButtonText}>Book Appointment</Text>
-              <Ionicons name="arrow-forward" size={18} color={COLORS.white} />
-            </AnimatedButton>
+      </Animated.ScrollView>
+
+      {/* Floating Book FAB */}
+      <Animated.View
+        style={[
+          styles.fab,
+          {
+            opacity: scrollY.interpolate({ inputRange: [0, 80], outputRange: [0, 1], extrapolate: 'clamp' }),
+            transform: [
+              { scale: scrollY.interpolate({ inputRange: [0, 80], outputRange: [0.8, 1], extrapolate: 'clamp' }) },
+              { translateY: scrollY.interpolate({ inputRange: [0, 80], outputRange: [20, 0], extrapolate: 'clamp' }) },
+            ],
+          },
+        ]}
+      >
+        <TouchableOpacity onPress={() => router.push('/booking')} activeOpacity={0.9}>
+          <View style={styles.fabInner}>
+            <Ionicons name="add" size={24} color={COLORS.white} />
           </View>
-        </View>
-      </ScrollView>
+        </TouchableOpacity>
+      </Animated.View>
     </>
   );
 }
@@ -310,25 +405,28 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
     paddingHorizontal: 20,
-    paddingTop: 60,
-    paddingBottom: 20,
+    paddingTop: 36,
+    paddingBottom: 10,
     backgroundColor: COLORS.white,
   },
+  headerLeft: {
+    flexDirection: 'column',
+  },
   greeting: {
-    fontSize: 24,
+    fontSize: 20,
     fontWeight: '700',
     color: COLORS.gray900,
     letterSpacing: -0.5,
   },
   subGreeting: {
-    fontSize: 14,
+    fontSize: 12,
     color: COLORS.gray600,
     marginTop: 2,
   },
   profileButton: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
+    width: 36,
+    height: 36,
+    borderRadius: 18,
     backgroundColor: COLORS.gray100,
     alignItems: 'center',
     justifyContent: 'center',
@@ -350,6 +448,39 @@ const styles = StyleSheet.create({
     flex: 1,
     fontSize: 15,
     color: COLORS.gray900,
+  },
+  searchResults: {
+    backgroundColor: COLORS.white,
+    marginHorizontal: 20,
+    marginTop: 8,
+    borderRadius: 12,
+    paddingVertical: 6,
+  },
+  resultRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+  },
+  resultText: {
+    color: COLORS.gray900,
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  noResults: {
+    color: COLORS.gray600,
+    fontSize: 13,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+  },
+  resultSection: {
+    fontSize: 12,
+    fontWeight: '800',
+    color: COLORS.gray600,
+    paddingHorizontal: 12,
+    paddingVertical: 4,
+    textTransform: 'uppercase',
   },
   
   // Hero Banner
@@ -451,26 +582,34 @@ const styles = StyleSheet.create({
     gap: 12,
   },
   serviceCard: {
-    width: 100,
-    backgroundColor: COLORS.white,
+    width: 140,
+    height: 160,
     borderRadius: 16,
-    padding: 16,
-    alignItems: 'center',
-    gap: 12,
+    overflow: 'hidden',
   },
-  serviceIconContainer: {
-    width: 56,
-    height: 56,
-    borderRadius: 28,
-    backgroundColor: 'rgba(124, 58, 237, 0.08)',
-    alignItems: 'center',
-    justifyContent: 'center',
+  serviceImage: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
   },
-  serviceName: {
-    fontSize: 13,
-    fontWeight: '600',
-    color: COLORS.gray900,
-    textAlign: 'center',
+  serviceOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: 'rgba(0,0,0,0.25)',
+  },
+  serviceLabel: {
+    position: 'absolute',
+    left: 12,
+    bottom: 12,
+    color: COLORS.white,
+    fontSize: 16,
+    fontWeight: '700',
+    letterSpacing: -0.3,
   },
   
   // Promo Deals
@@ -484,6 +623,22 @@ const styles = StyleSheet.create({
     padding: 20,
     minHeight: 160,
     justifyContent: 'space-between',
+    overflow: 'hidden',
+  },
+  promoImage: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+  },
+  promoImageOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: 'rgba(0,0,0,0.35)',
   },
   promoBadge: {
     backgroundColor: 'rgba(255,255,255,0.3)',
@@ -526,6 +681,23 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: 'rgba(255,255,255,0.7)',
     textDecorationLine: 'line-through',
+  },
+  
+  // Floating Action Button
+  fab: {
+    position: 'absolute',
+    right: 20,
+    bottom: 28,
+    // no shadow on container to avoid square artifact behind circle
+    backgroundColor: 'transparent',
+  },
+  fabInner: {
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    backgroundColor: '#F59E0B',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   
   // Salon Card

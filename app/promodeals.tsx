@@ -1,4 +1,6 @@
 import { Ionicons } from "@expo/vector-icons";
+import { useRouter } from "expo-router";
+
 import React, { useEffect, useState } from "react";
 import {
   Animated,
@@ -13,11 +15,10 @@ import {
 import { Promo, getPromos } from "../constants/servicesData";
 
 // Animated Promo Card Component
-const AnimatedPromoCard = ({ item, index, isFavorite, onToggleFavorite }: { item: Promo; index: number; isFavorite: boolean; onToggleFavorite: (id: string) => void }) => {
+const AnimatedPromoCard = ({ item, index }: { item: Promo; index: number }) => {
   const [fadeAnim] = useState(new Animated.Value(0));
   const [slideAnim] = useState(new Animated.Value(50));
   const [scaleAnim] = useState(new Animated.Value(1));
-  const [heartScale] = useState(new Animated.Value(1));
 
   useEffect(() => {
     Animated.parallel([
@@ -53,24 +54,6 @@ const AnimatedPromoCard = ({ item, index, isFavorite, onToggleFavorite }: { item
     }).start();
   };
 
-  const handleFavoritePress = () => {
-    // Animate heart
-    Animated.sequence([
-      Animated.spring(heartScale, {
-        toValue: 1.3,
-        friction: 3,
-        useNativeDriver: true,
-      }),
-      Animated.spring(heartScale, {
-        toValue: 1,
-        friction: 3,
-        useNativeDriver: true,
-      }),
-    ]).start();
-    
-    onToggleFavorite(item.id);
-  };
-
   return (
     <Animated.View
       style={[
@@ -98,29 +81,10 @@ const AnimatedPromoCard = ({ item, index, isFavorite, onToggleFavorite }: { item
               <Text style={styles.badgeText}>{item.badge}</Text>
             </View>
           )}
-
-          <View style={styles.discountTag}>
-            <Ionicons name="pricetag" size={16} color="#FFFFFF" />
-          </View>
         </View>
 
         <View style={styles.info}>
-          <View style={styles.titleRow}>
-            <Text style={styles.title}>{item.title}</Text>
-            <TouchableOpacity 
-              style={styles.heartButton}
-              onPress={handleFavoritePress}
-              activeOpacity={0.7}
-            >
-              <Animated.View style={{ transform: [{ scale: heartScale }] }}>
-                <Ionicons 
-                  name={isFavorite ? "heart" : "heart-outline"} 
-                  size={22} 
-                  color={isFavorite ? "#EF4444" : "#7C3AED"} 
-                />
-              </Animated.View>
-            </TouchableOpacity>
-          </View>
+          <Text style={styles.title}>{item.title}</Text>
           <Text style={styles.description}>{item.description}</Text>
           
           <View style={styles.priceRow}>
@@ -138,6 +102,7 @@ const AnimatedPromoCard = ({ item, index, isFavorite, onToggleFavorite }: { item
 
 // Animated Button Component
 const AnimatedButton = () => {
+  const router = useRouter();
   const [scaleValue] = useState(new Animated.Value(1));
 
   const handlePressIn = () => {
@@ -156,8 +121,13 @@ const AnimatedButton = () => {
     }).start();
   };
 
+  const handlePress = () => {
+    router.push({ pathname: "/booking", params: { openModal: "1", step: "2" } });
+  };
+
   return (
     <TouchableOpacity
+      onPress={handlePress}
       onPressIn={handlePressIn}
       onPressOut={handlePressOut}
       activeOpacity={1}
@@ -179,23 +149,11 @@ const AnimatedButton = () => {
 };
 
 export default function PromoDealsScreen() {
+  const router = useRouter();
   const [headerFade] = useState(new Animated.Value(0));
   const [headerSlide] = useState(new Animated.Value(-30));
   const [pulseAnim] = useState(new Animated.Value(1));
-  const [favorites, setFavorites] = useState<Set<string>>(new Set());
   const [promoDeals, setPromoDeals] = useState<Promo[]>(getPromos());
-
-  const toggleFavorite = (id: string) => {
-    setFavorites(prev => {
-      const newFavorites = new Set(prev);
-      if (newFavorites.has(id)) {
-        newFavorites.delete(id);
-      } else {
-        newFavorites.add(id);
-      }
-      return newFavorites;
-    });
-  };
 
   useEffect(() => {
     // Header animation
@@ -241,12 +199,24 @@ export default function PromoDealsScreen() {
           },
         ]}
       >
+        {/* Page Switcher */}
+        <View style={styles.switcherRow}>
+          <TouchableOpacity onPress={() => router.push('/services')}>
+            <Text style={styles.switcherLink}>Services</Text>
+          </TouchableOpacity>
+          <Text style={styles.switcherSep}> | </Text>
+          <TouchableOpacity>
+            <Text style={[styles.switcherLink, styles.switcherActive]}>Promo Deals</Text>
+          </TouchableOpacity>
+        </View>
+
         <View style={styles.headerContent}>
           <Animated.View style={{ transform: [{ scale: pulseAnim }] }}>
             <Ionicons name="flame" size={32} color="#EF4444" />
           </Animated.View>
           <Text style={styles.header}>Hot Promo Deals</Text>
         </View>
+        
         <Text style={styles.subheader}>
           Limited time offers — grab them before they're gone!
         </Text>
@@ -262,8 +232,6 @@ export default function PromoDealsScreen() {
           <AnimatedPromoCard 
             item={item} 
             index={index} 
-            isFavorite={favorites.has(item.id)}
-            onToggleFavorite={toggleFavorite}
           />
         )}
       />
@@ -281,7 +249,7 @@ const styles = StyleSheet.create({
   },
   headerContainer: {
     paddingHorizontal: 24,
-    paddingTop: 60,
+    paddingTop: 24,
     paddingBottom: 24,
     backgroundColor: "#FFFFFF",
     borderBottomWidth: 1,
@@ -292,6 +260,27 @@ const styles = StyleSheet.create({
     alignItems: "center",
     gap: 12,
     marginBottom: 8,
+  },
+  switcherRow: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 6,
+  },
+  switcherLink: {
+    fontSize: 15,
+    fontWeight: '700',
+    color: '#6B7280',
+  },
+  switcherActive: {
+    color: '#7C3AED',
+    fontWeight: '800',
+  },
+  switcherSep: {
+    color: '#D1D5DB',
+    marginHorizontal: 10,
+    fontWeight: '800',
+    fontSize: 16,
   },
   header: {
     fontSize: 28,
@@ -356,41 +345,15 @@ const styles = StyleSheet.create({
     fontWeight: "700",
     letterSpacing: 1,
   },
-  discountTag: {
-    position: "absolute",
-    top: 16,
-    right: 16,
-    backgroundColor: "#7C3AED",
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    alignItems: "center",
-    justifyContent: "center",
-    shadowColor: "#000",
-    shadowOpacity: 0.2,
-    shadowOffset: { width: 0, height: 2 },
-    shadowRadius: 4,
-    elevation: 3,
-  },
   info: {
     padding: 20,
-  },
-  titleRow: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "flex-start",
-    marginBottom: 8,
   },
   title: {
     fontSize: 18,
     fontWeight: "700",
     color: "#1F2937",
     letterSpacing: -0.3,
-    flex: 1,
-    paddingRight: 8,
-  },
-  heartButton: {
-    padding: 4,
+    marginBottom: 8,
   },
   description: {
     color: "#6B7280",
