@@ -1,5 +1,7 @@
 // BookingScreen.tsx - React Native Version with Full CRUD
 import { Ionicons } from "@expo/vector-icons";
+import { useLocalSearchParams } from "expo-router";
+
 import { addDoc, collection, deleteDoc, doc, onSnapshot, query, updateDoc, where } from "firebase/firestore";
 import React, { useEffect, useState } from "react";
 import { Alert, FlatList, Modal, ScrollView, StyleSheet, Text, TouchableOpacity, View } from "react-native";
@@ -57,6 +59,8 @@ const generateAvailableDates = () => {
 const AVAILABLE_DATES = generateAvailableDates();
 
 export default function BookingScreen({ isAdmin = false }: { isAdmin?: boolean }) {
+  const { openModal, step: stepParam } = useLocalSearchParams<{ openModal?: string; step?: string }>();
+
   const [bookings, setBookings] = useState<Booking[]>([]);
   const [modalVisible, setModalVisible] = useState(false);
   const [editingBooking, setEditingBooking] = useState<Booking | null>(null);
@@ -82,8 +86,8 @@ export default function BookingScreen({ isAdmin = false }: { isAdmin?: boolean }
       q = query(collection(database, "bookings"), where("userId", "==", user.uid));
     }
 
-    const unsubscribe = onSnapshot(q, (snapshot) => {
-      const data: Booking[] = snapshot.docs.map((docSnap) => ({
+    const unsubscribe = onSnapshot(q, (snapshot: any) => {
+      const data: Booking[] = snapshot.docs.map((docSnap: any) => ({
         id: docSnap.id,
         ...(docSnap.data() as any),
       }));
@@ -92,6 +96,17 @@ export default function BookingScreen({ isAdmin = false }: { isAdmin?: boolean }
 
     return () => unsubscribe();
   }, [isAdmin]);
+
+  // Open modal via route params (e.g., from Promo Deals) without touching Firebase
+  useEffect(() => {
+    if (openModal === '1') {
+      const parsedStep = parseInt(stepParam || '2', 10);
+      setStep(isNaN(parsedStep) ? 2 : Math.max(1, Math.min(4, parsedStep)));
+      setModalVisible(true);
+    }
+    // run once on mount when params present
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // Calendar functions
   const getCalendarDates = () => {
@@ -217,7 +232,7 @@ export default function BookingScreen({ isAdmin = false }: { isAdmin?: boolean }
           setModalVisible(false);
           setEditingBooking(null);
         })
-        .catch((err) => {
+        .catch((err: any) => {
           console.error(err);
           Alert.alert("Error", "Failed to update booking.");
         });
@@ -227,7 +242,7 @@ export default function BookingScreen({ isAdmin = false }: { isAdmin?: boolean }
           Alert.alert("Success", "Booking created successfully!");
           setModalVisible(false);
         })
-        .catch((err) => {
+        .catch((err: any) => {
           console.error(err);
           Alert.alert("Error", "Failed to create booking.");
         });
@@ -245,7 +260,7 @@ export default function BookingScreen({ isAdmin = false }: { isAdmin?: boolean }
         onPress: () => {
           deleteDoc(doc(database, "bookings", id))
             .then(() => Alert.alert("Deleted", "Booking deleted successfully."))
-            .catch((err) => {
+            .catch((err: any) => {
               console.error(err);
               Alert.alert("Error", "Failed to delete booking.");
             });
