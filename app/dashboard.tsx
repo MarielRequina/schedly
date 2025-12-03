@@ -462,7 +462,11 @@ const styles = StyleSheet.create({
     width: 56,
     height: 56,
     borderRadius: 28,
+<<<<<<< HEAD
     backgroundColor: `${COLORS.primary}15`,
+=======
+    backgroundColor: 'rgba(124, 58, 237, 0.08)',
+>>>>>>> 72622e1c0974b8c8c73989a080f8e5e20c6382fd
     alignItems: 'center',
     justifyContent: 'center',
   },

@@ -5,13 +5,13 @@ import { getFirestore } from "firebase/firestore";
 
 // Your web app's Firebase configuration
 const firebaseConfig = {
-  apiKey: "AIzaSyA2IJjcdjqgmswbvaAwWMTDjGKe432_ErY",
-  authDomain: "schedlysalon.firebaseapp.com",
-  projectId: "schedlysalon",
-  storageBucket: "schedlysalon.firebasestorage.app",
-  messagingSenderId: "985547010552",
-  appId: "1:985547010552:web:c00be57c0b4d8a0d74a60d",
-  measurementId: "G-ZZG4LM6PDQ"
+  apiKey: "AIzaSyAG0i3pa6hWDaW8a8-QpcfXKmECdYnvNMI",
+  authDomain: "schedly-87272.firebaseapp.com",
+  projectId: "schedly-87272",
+  storageBucket: "schedly-87272.firebasestorage.app",
+  messagingSenderId: "281484836803",
+  appId: "1:281484836803:web:eda10a420dc05cdc02c776",
+  measurementId: "G-10NMEEGVK9"
 };
 
 // Initialize Firebase only if no app exists

@@ -4,6 +4,11 @@ import { StatusBar } from "expo-status-bar";
 import React, { useState } from "react";
 import { Animated, Image, StyleSheet, Text, TouchableOpacity, View } from "react-native";
 
+<<<<<<< HEAD
+=======
+ 
+
+>>>>>>> 72622e1c0974b8c8c73989a080f8e5e20c6382fd
 const COLORS = {
   primary: '#7C3AED',
   primaryLight: '#9F7AEA',
@@ -224,6 +229,13 @@ const styles = StyleSheet.create({
     fontWeight: "600",
     marginTop: 4,
     color: COLORS.gray600,
+<<<<<<< HEAD
+=======
+  },
+  navTextActive: {
+    color: COLORS.primary,
+    fontWeight: "700",
+>>>>>>> 72622e1c0974b8c8c73989a080f8e5e20c6382fd
   },
   navTextActive: {
     color: COLORS.primary,
