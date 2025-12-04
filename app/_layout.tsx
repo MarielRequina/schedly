@@ -131,8 +131,6 @@ export default function Layout() {
   const drawerItems = [
     { name: "Booking", route: "/booking", icon: "calendar" },
     { name: "Services", route: "/services", icon: "cut" },
-    { name: "Hot Deals", route: "/promodeals", icon: "flame" },
-    { name: "Settings", route: "/settings", icon: "settings-outline" },
     { name: "Logout", route: "/", icon: "log-out-outline" },
   ];
 

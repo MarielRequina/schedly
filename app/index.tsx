@@ -104,8 +104,14 @@ export default function IndexScreen() {
         ]} 
       />
 
-      {/* Top-right admin button */}
-      <Animated.View style={{ opacity: fadeAnim }}>
+      {/* Top-right admin button - Fixed positioning */}
+      <Animated.View 
+        style={[
+          styles.topButtonContainer,
+          { opacity: fadeAnim }
+        ]}
+        pointerEvents="box-none"
+      >
         <TouchableOpacity
           style={styles.topButton}
           onPress={() => router.push("/admin/adminLogin")}
@@ -215,6 +221,7 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(255, 255, 255, 0.1)',
     top: -80,
     right: -80,
+    zIndex: 0,
   },
   decorativeCircle2: {
     position: 'absolute',
@@ -224,11 +231,16 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(255, 255, 255, 0.05)',
     bottom: -60,
     left: -60,
+    zIndex: 0,
   },
-  topButton: {
+  topButtonContainer: {
     position: 'absolute',
     top: 50,
     right: 20,
+    zIndex: 1000,
+    elevation: 1000,
+  },
+  topButton: {
     backgroundColor: COLORS.white,
     flexDirection: 'row',
     alignItems: 'center',
@@ -236,12 +248,11 @@ const styles = StyleSheet.create({
     paddingVertical: 10,
     paddingHorizontal: 16,
     borderRadius: 25,
-    zIndex: 10,
-    elevation: 4,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.2,
     shadowRadius: 4,
+    elevation: 8,
   },
   topButtonText: {
     color: COLORS.primary,
@@ -253,6 +264,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     paddingHorizontal: 30,
+    zIndex: 1,
   },
   logoContainer: {
     position: 'relative',
@@ -374,6 +386,7 @@ const styles = StyleSheet.create({
     position: 'absolute',
     bottom: 30,
     alignSelf: 'center',
+    zIndex: 1,
   },
   footerText: {
     color: 'rgba(255, 255, 255, 0.7)',
