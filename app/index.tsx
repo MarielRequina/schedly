@@ -1,18 +1,27 @@
+import { Ionicons } from "@expo/vector-icons";
 import { LinearGradient } from 'expo-linear-gradient';
-import { usePathname, useRouter } from "expo-router";
+import { useRouter } from "expo-router";
 import React, { useEffect, useRef } from "react";
 import { Animated, StyleSheet, Text, TouchableOpacity, View } from "react-native";
 
+const COLORS = {
+  primary: '#9333EA',
+  primaryDark: '#7C3AED',
+  primaryLight: '#C084FC',
+  white: '#FFFFFF',
+  text: '#1F2937',
+  textLight: '#6B7280',
+};
+
 export default function IndexScreen() {
   const router = useRouter();
-  const pathname = usePathname();
 
   // Animation values
   const fadeAnim = useRef(new Animated.Value(0)).current;
-  const scaleAnim = useRef(new Animated.Value(0.8)).current;
-  const slideAnim = useRef(new Animated.Value(50)).current;
-  const iconRotate = useRef(new Animated.Value(0)).current;
+  const scaleAnim = useRef(new Animated.Value(0.9)).current;
+  const slideAnim = useRef(new Animated.Value(30)).current;
   const pulseAnim = useRef(new Animated.Value(1)).current;
+  const floatAnim = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
     // Main entrance animations
@@ -24,8 +33,8 @@ export default function IndexScreen() {
       }),
       Animated.spring(scaleAnim, {
         toValue: 1,
-        tension: 50,
-        friction: 7,
+        tension: 40,
+        friction: 8,
         useNativeDriver: true,
       }),
       Animated.timing(slideAnim, {
@@ -35,47 +44,57 @@ export default function IndexScreen() {
       }),
     ]).start();
 
-    // Icon rotation animation
-    Animated.loop(
-      Animated.timing(iconRotate, {
-        toValue: 1,
-        duration: 3000,
-        useNativeDriver: true,
-      })
-    ).start();
-
     // Pulse animation for button
     Animated.loop(
       Animated.sequence([
         Animated.timing(pulseAnim, {
           toValue: 1.05,
-          duration: 1000,
+          duration: 1500,
           useNativeDriver: true,
         }),
         Animated.timing(pulseAnim, {
           toValue: 1,
-          duration: 1000,
+          duration: 1500,
+          useNativeDriver: true,
+        }),
+      ])
+    ).start();
+
+    // Float animation for decorative elements
+    Animated.loop(
+      Animated.sequence([
+        Animated.timing(floatAnim, {
+          toValue: 1,
+          duration: 3000,
+          useNativeDriver: true,
+        }),
+        Animated.timing(floatAnim, {
+          toValue: 0,
+          duration: 3000,
           useNativeDriver: true,
         }),
       ])
     ).start();
   }, []);
 
-  const iconRotation = iconRotate.interpolate({
+  const floatTranslate = floatAnim.interpolate({
     inputRange: [0, 1],
-    outputRange: ['0deg', '360deg'],
+    outputRange: [0, -15],
   });
 
   return (
     <LinearGradient
-      colors={['#1a0033', '#2d1b4e', '#1a0033']}
+      colors={[COLORS.primary, COLORS.primaryDark, COLORS.primary]}
       style={styles.container}
     >
       {/* Animated decorative circles */}
       <Animated.View 
         style={[
           styles.decorativeCircle1,
-          { opacity: fadeAnim }
+          { 
+            opacity: fadeAnim,
+            transform: [{ translateY: floatTranslate }]
+          }
         ]} 
       />
       <Animated.View 
@@ -86,12 +105,16 @@ export default function IndexScreen() {
       />
 
       {/* Top-right admin button */}
-      <TouchableOpacity
-        style={styles.topButton}
-        onPress={() => router.push("/admin/adminLogin")}
-      >
-        <Text style={styles.topButtonText}>Admin</Text>
-      </TouchableOpacity>
+      <Animated.View style={{ opacity: fadeAnim }}>
+        <TouchableOpacity
+          style={styles.topButton}
+          onPress={() => router.push("/admin/adminLogin")}
+          activeOpacity={0.8}
+        >
+          <Ionicons name="shield-checkmark" size={16} color={COLORS.primary} />
+          <Text style={styles.topButtonText}>Admin Portal</Text>
+        </TouchableOpacity>
+      </Animated.View>
 
       {/* Main content */}
       <Animated.View 
@@ -106,48 +129,74 @@ export default function IndexScreen() {
           }
         ]}
       >
-        <Animated.View 
-          style={[
-            styles.iconContainer,
-            { transform: [{ rotate: iconRotation }] }
-          ]}
-        >
-          <Text style={styles.mainIcon}>✨</Text>
-        </Animated.View>
+        {/* Logo/Icon */}
+        <View style={styles.logoContainer}>
+          <View style={styles.logoCircle}>
+            <Ionicons name="cut" size={48} color={COLORS.white} />
+          </View>
+          <View style={styles.sparkle1}>
+            <Ionicons name="sparkles" size={20} color={COLORS.white} />
+          </View>
+          <View style={styles.sparkle2}>
+            <Ionicons name="sparkles" size={16} color={COLORS.white} />
+          </View>
+        </View>
         
-        <Text style={styles.title}>Welcome to Schedify</Text>
+        <Text style={styles.title}>Schedify</Text>
+        <Text style={styles.tagline}>Beauty Booking Made Simple</Text>
         <Text style={styles.subtitle}>
-          Your beauty, our priority.{'\n'}
-          Book appointments with ease.
+          Book your favorite salon services with ease.{'\n'}
+          Professional care, anytime, anywhere.
         </Text>
 
-        {/* Main CTA button with pulse */}
-        <Animated.View style={{ transform: [{ scale: pulseAnim }] }}>
+        {/* Main CTA buttons */}
+        <View style={styles.buttonContainer}>
+          <Animated.View style={{ transform: [{ scale: pulseAnim }] }}>
+            <TouchableOpacity
+              style={styles.primaryButton}
+              onPress={() => router.push("/login")}
+              activeOpacity={0.9}
+            >
+              <Text style={styles.primaryButtonText}>Get Started</Text>
+              <Ionicons name="arrow-forward" size={20} color={COLORS.primary} />
+            </TouchableOpacity>
+          </Animated.View>
+
           <TouchableOpacity
-            style={styles.ctaButton}
-            onPress={() => router.push("/login")}
-            activeOpacity={0.9}
+            style={styles.secondaryButton}
+            onPress={() => router.push("/signup")}
+            activeOpacity={0.8}
           >
-            <Text style={styles.ctaButtonText}>Get Started</Text>
-            <Text style={styles.ctaButtonIcon}>→</Text>
+            <Text style={styles.secondaryButtonText}>Create Account</Text>
           </TouchableOpacity>
-        </Animated.View>
+        </View>
 
         {/* Features */}
         <View style={styles.features}>
           <View style={styles.feature}>
-            <Text style={styles.featureIcon}>📅</Text>
-            <Text style={styles.featureText}>Easy Booking</Text>
+            <View style={styles.featureIcon}>
+              <Ionicons name="calendar" size={24} color={COLORS.white} />
+            </View>
+            <Text style={styles.featureText}>Easy{'\n'}Booking</Text>
           </View>
           <View style={styles.feature}>
-            <Text style={styles.featureIcon}>⏰</Text>
-            <Text style={styles.featureText}>24/7 Access</Text>
+            <View style={styles.featureIcon}>
+              <Ionicons name="time" size={24} color={COLORS.white} />
+            </View>
+            <Text style={styles.featureText}>Flexible{'\n'}Schedule</Text>
           </View>
           <View style={styles.feature}>
-            <Text style={styles.featureIcon}>💆‍♀️</Text>
-            <Text style={styles.featureText}>Top Salons</Text>
+            <View style={styles.featureIcon}>
+              <Ionicons name="people" size={24} color={COLORS.white} />
+            </View>
+            <Text style={styles.featureText}>Expert{'\n'}Stylists</Text>
           </View>
         </View>
+      </Animated.View>
+
+      {/* Footer */}
+      <Animated.View style={[styles.footer, { opacity: fadeAnim }]}>
+        <Text style={styles.footerText}>Trusted by hundreds of satisfied customers</Text>
       </Animated.View>
     </LinearGradient>
   );
@@ -160,38 +209,43 @@ const styles = StyleSheet.create({
   },
   decorativeCircle1: {
     position: 'absolute',
-    width: 300,
-    height: 300,
-    borderRadius: 150,
-    backgroundColor: 'rgba(139, 92, 246, 0.1)',
-    top: -100,
-    right: -100,
+    width: 250,
+    height: 250,
+    borderRadius: 125,
+    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+    top: -80,
+    right: -80,
   },
   decorativeCircle2: {
     position: 'absolute',
-    width: 200,
-    height: 200,
-    borderRadius: 100,
-    backgroundColor: 'rgba(139, 92, 246, 0.1)',
-    bottom: -50,
-    left: -50,
+    width: 180,
+    height: 180,
+    borderRadius: 90,
+    backgroundColor: 'rgba(255, 255, 255, 0.05)',
+    bottom: -60,
+    left: -60,
   },
   topButton: {
     position: 'absolute',
     top: 50,
     right: 20,
-    backgroundColor: 'rgba(255, 255, 153, 0.15)',
-    paddingVertical: 8,
-    paddingHorizontal: 20,
-    borderRadius: 20,
-    borderWidth: 1,
-    borderColor: '#ffffcc',
+    backgroundColor: COLORS.white,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingVertical: 10,
+    paddingHorizontal: 16,
+    borderRadius: 25,
     zIndex: 10,
-    elevation: 3,
+    elevation: 4,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 4,
   },
   topButtonText: {
-    color: '#ffffcc',
-    fontWeight: '600',
+    color: COLORS.primary,
+    fontWeight: '700',
     fontSize: 13,
   },
   content: {
@@ -200,59 +254,93 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingHorizontal: 30,
   },
-  iconContainer: {
+  logoContainer: {
+    position: 'relative',
+    marginBottom: 24,
+  },
+  logoCircle: {
     width: 100,
     height: 100,
     borderRadius: 50,
-    backgroundColor: 'rgba(139, 92, 246, 0.2)',
+    backgroundColor: 'rgba(255, 255, 255, 0.2)',
     justifyContent: 'center',
     alignItems: 'center',
-    marginBottom: 30,
-    borderWidth: 2,
-    borderColor: '#8b5cf6',
+    borderWidth: 3,
+    borderColor: COLORS.white,
   },
-  mainIcon: {
-    fontSize: 50,
+  sparkle1: {
+    position: 'absolute',
+    top: -5,
+    right: -5,
+  },
+  sparkle2: {
+    position: 'absolute',
+    bottom: 5,
+    left: -5,
   },
   title: {
-    fontSize: 36,
-    color: '#ffffcc',
+    fontSize: 42,
+    color: COLORS.white,
     fontWeight: 'bold',
+    marginBottom: 8,
+    textAlign: 'center',
+    letterSpacing: 1,
+  },
+  tagline: {
+    fontSize: 16,
+    color: COLORS.white,
+    fontWeight: '600',
     marginBottom: 12,
     textAlign: 'center',
-    letterSpacing: 0.5,
+    opacity: 0.9,
   },
   subtitle: {
-    color: 'rgba(255, 255, 204, 0.8)',
-    marginBottom: 50,
+    color: 'rgba(255, 255, 255, 0.85)',
+    marginBottom: 40,
     textAlign: 'center',
-    fontSize: 16,
-    lineHeight: 24,
+    fontSize: 15,
+    lineHeight: 22,
   },
-  ctaButton: {
-    backgroundColor: '#ffffcc',
+  buttonContainer: {
+    width: '100%',
+    maxWidth: 350,
+    gap: 12,
+    marginBottom: 50,
+  },
+  primaryButton: {
+    backgroundColor: COLORS.white,
     paddingVertical: 16,
-    paddingHorizontal: 40,
+    paddingHorizontal: 32,
     borderRadius: 30,
     flexDirection: 'row',
     alignItems: 'center',
-    shadowColor: '#8b5cf6',
+    justifyContent: 'center',
+    gap: 8,
+    shadowColor: '#000',
     shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.5,
+    shadowOpacity: 0.3,
     shadowRadius: 8,
     elevation: 8,
-    marginBottom: 50,
   },
-  ctaButtonText: {
-    color: '#2d1b4e',
+  primaryButtonText: {
+    color: COLORS.primary,
     fontWeight: 'bold',
     fontSize: 18,
-    marginRight: 8,
   },
-  ctaButtonIcon: {
-    color: '#2d1b4e',
-    fontSize: 20,
-    fontWeight: 'bold',
+  secondaryButton: {
+    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+    paddingVertical: 16,
+    paddingHorizontal: 32,
+    borderRadius: 30,
+    borderWidth: 2,
+    borderColor: COLORS.white,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  secondaryButtonText: {
+    color: COLORS.white,
+    fontWeight: '700',
+    fontSize: 16,
   },
   features: {
     flexDirection: 'row',
@@ -265,12 +353,31 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   featureIcon: {
-    fontSize: 28,
-    marginBottom: 8,
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 12,
+    borderWidth: 2,
+    borderColor: COLORS.white,
   },
   featureText: {
-    color: 'rgba(255, 255, 204, 0.9)',
+    color: COLORS.white,
     fontSize: 12,
     fontWeight: '600',
+    textAlign: 'center',
+    lineHeight: 16,
+  },
+  footer: {
+    position: 'absolute',
+    bottom: 30,
+    alignSelf: 'center',
+  },
+  footerText: {
+    color: 'rgba(255, 255, 255, 0.7)',
+    fontSize: 12,
+    fontWeight: '500',
   },
 });

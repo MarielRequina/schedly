@@ -40,11 +40,11 @@ export default function AdminDashboard() {
       setLoading(true);
       const q = query(collection(database, "bookings"), orderBy("date", "desc"));
       
-      const unsubscribe = onSnapshot(q, async (snapshot) => {
+      const unsubscribe = onSnapshot(q, async (snapshot: { docs: any[]; }) => {
         const bookingList: Booking[] = [];
         
         // Process all documents in parallel
-        const promises = snapshot.docs.map(async (docSnap) => {
+        const promises = snapshot.docs.map(async (docSnap: { data: () => any; id: any; }) => {
           const data = docSnap.data();
           let userName = data.userName || "Unknown User";
 
@@ -78,7 +78,7 @@ export default function AdminDashboard() {
         const bookingsData = await Promise.all(promises);
         setBookings(bookingsData);
         setLoading(false);
-      }, (error) => {
+      }, (error: any) => {
         console.error("Error in onSnapshot:", error);
         setLoading(false);
         Alert.alert("Error", "Failed to load bookings. Please check your connection.");

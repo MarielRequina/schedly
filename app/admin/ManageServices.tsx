@@ -48,10 +48,11 @@ export default function ManageServices() {
       const querySnapshot = await getDocs(collection(database, "services"));
       const firestoreServices: Service[] = [];
       
-      querySnapshot.forEach((doc) => {
+      querySnapshot.forEach((doc: { id: any; data: () => Service; }) => {
+        const { id, ...data } = doc.data();
         firestoreServices.push({
           id: doc.id,
-          ...doc.data(),
+          ...data,
         } as Service);
       });
       

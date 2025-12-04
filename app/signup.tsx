@@ -1,3 +1,4 @@
+import { Ionicons } from "@expo/vector-icons";
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from "expo-router";
 import { createUserWithEmailAndPassword } from "firebase/auth";
@@ -6,17 +7,27 @@ import React, { useEffect, useRef, useState } from "react";
 import { Alert, Animated, KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from "react-native";
 import { Authentication, database } from "../constants/firebaseConfig";
 
+const COLORS = {
+  primary: '#9333EA',
+  primaryDark: '#7C3AED',
+  primaryLight: '#C084FC',
+  white: '#FFFFFF',
+  text: '#1F2937',
+  textLight: '#6B7280',
+  border: '#E5E7EB',
+};
+
 export default function Signup() {
   const router = useRouter();
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [isLoading, setIsLoading] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
 
   // Animation values
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const slideAnim = useRef(new Animated.Value(30)).current;
-  const buttonScale = useRef(new Animated.Value(1)).current;
 
   useEffect(() => {
     Animated.parallel([
@@ -46,20 +57,6 @@ export default function Signup() {
     }
 
     setIsLoading(true);
-    
-    // Button press animation
-    Animated.sequence([
-      Animated.timing(buttonScale, {
-        toValue: 0.95,
-        duration: 100,
-        useNativeDriver: true,
-      }),
-      Animated.timing(buttonScale, {
-        toValue: 1,
-        duration: 100,
-        useNativeDriver: true,
-      }),
-    ]).start();
 
     try {
       const userCredential = await createUserWithEmailAndPassword(Authentication, email, password);
@@ -88,7 +85,7 @@ export default function Signup() {
 
   return (
     <LinearGradient
-      colors={['#1a0033', '#2d1b4e', '#1a0033']}
+      colors={[COLORS.primary, COLORS.primaryDark]}
       style={styles.container}
     >
       <KeyboardAvoidingView 
@@ -108,22 +105,32 @@ export default function Signup() {
               }
             ]}
           >
+            {/* Back button */}
+            <TouchableOpacity 
+              onPress={() => router.push("/")} 
+              style={styles.backButton}
+            >
+              <Ionicons name="arrow-back" size={24} color={COLORS.white} />
+            </TouchableOpacity>
+
             {/* Header */}
             <View style={styles.header}>
               <View style={styles.iconCircle}>
-                <Text style={styles.icon}>✨</Text>
+                <Ionicons name="person-add" size={40} color={COLORS.primary} />
               </View>
-              <Text style={styles.title}>Join Schedify</Text>
-              <Text style={styles.subtitle}>Create your account to get started</Text>
+              <Text style={styles.title}>Create Account</Text>
+              <Text style={styles.subtitle}>Join Schedify to book your appointments</Text>
             </View>
 
-            {/* Input fields */}
-            <View style={styles.form}>
+            {/* Form Card */}
+            <View style={styles.formCard}>
               <View style={styles.inputContainer}>
-                <Text style={styles.inputLabel}>Full Name</Text>
+                <Text style={styles.inputLabel}>
+                  <Ionicons name="person-outline" size={14} /> Full Name
+                </Text>
                 <TextInput
                   placeholder="Enter your full name"
-                  placeholderTextColor="rgba(255, 255, 204, 0.4)"
+                  placeholderTextColor={COLORS.textLight}
                   value={name}
                   onChangeText={setName}
                   style={styles.input}
@@ -132,10 +139,12 @@ export default function Signup() {
               </View>
 
               <View style={styles.inputContainer}>
-                <Text style={styles.inputLabel}>Email</Text>
+                <Text style={styles.inputLabel}>
+                  <Ionicons name="mail-outline" size={14} /> Email Address
+                </Text>
                 <TextInput
                   placeholder="Enter your email"
-                  placeholderTextColor="rgba(255, 255, 204, 0.4)"
+                  placeholderTextColor={COLORS.textLight}
                   value={email}
                   onChangeText={setEmail}
                   style={styles.input}
@@ -146,47 +155,75 @@ export default function Signup() {
               </View>
 
               <View style={styles.inputContainer}>
-                <Text style={styles.inputLabel}>Password</Text>
-                <TextInput
-                  placeholder="Create a password (min 6 characters)"
-                  placeholderTextColor="rgba(255, 255, 204, 0.4)"
-                  secureTextEntry
-                  value={password}
-                  onChangeText={setPassword}
-                  style={styles.input}
-                  autoCapitalize="none"
-                />
+                <Text style={styles.inputLabel}>
+                  <Ionicons name="lock-closed-outline" size={14} /> Password
+                </Text>
+                <View style={styles.passwordContainer}>
+                  <TextInput
+                    placeholder="Create a password (min 6 characters)"
+                    placeholderTextColor={COLORS.textLight}
+                    secureTextEntry={!showPassword}
+                    value={password}
+                    onChangeText={setPassword}
+                    style={[styles.input, styles.passwordInput]}
+                    autoCapitalize="none"
+                  />
+                  <TouchableOpacity 
+                    style={styles.eyeIcon}
+                    onPress={() => setShowPassword(!showPassword)}
+                  >
+                    <Ionicons 
+                      name={showPassword ? "eye-off" : "eye"} 
+                      size={20} 
+                      color={COLORS.textLight} 
+                    />
+                  </TouchableOpacity>
+                </View>
               </View>
 
               {/* Signup button */}
-              <Animated.View style={{ transform: [{ scale: buttonScale }] }}>
-                <TouchableOpacity 
-                  style={[styles.button, isLoading && styles.buttonDisabled]} 
-                  onPress={handleSignup}
-                  disabled={isLoading}
-                  activeOpacity={0.8}
-                >
-                  <Text style={styles.buttonText}>
-                    {isLoading ? "Creating Account..." : "Sign Up"}
-                  </Text>
-                </TouchableOpacity>
-              </Animated.View>
+              <TouchableOpacity 
+                style={[styles.button, isLoading && styles.buttonDisabled]} 
+                onPress={handleSignup}
+                disabled={isLoading}
+                activeOpacity={0.8}
+              >
+                {isLoading ? (
+                  <Text style={styles.buttonText}>Creating Account...</Text>
+                ) : (
+                  <>
+                    <Text style={styles.buttonText}>Sign Up</Text>
+                    <Ionicons name="arrow-forward" size={20} color={COLORS.white} />
+                  </>
+                )}
+              </TouchableOpacity>
 
               {/* Login link */}
-              <TouchableOpacity onPress={() => router.push("/login")}>
+              <TouchableOpacity 
+                onPress={() => router.push("/login")}
+                style={styles.linkContainer}
+              >
                 <Text style={styles.link}>
                   Already have an account? <Text style={styles.linkBold}>Login</Text>
                 </Text>
               </TouchableOpacity>
             </View>
 
-            {/* Back button */}
-            <TouchableOpacity 
-              onPress={() => router.push("/")} 
-              style={styles.backButton}
-            >
-              <Text style={styles.backText}>← Back to Home</Text>
-            </TouchableOpacity>
+            {/* Trust indicators */}
+            <View style={styles.trustContainer}>
+              <View style={styles.trustItem}>
+                <Ionicons name="shield-checkmark" size={16} color="rgba(255,255,255,0.8)" />
+                <Text style={styles.trustText}>Secure</Text>
+              </View>
+              <View style={styles.trustItem}>
+                <Ionicons name="lock-closed" size={16} color="rgba(255,255,255,0.8)" />
+                <Text style={styles.trustText}>Encrypted</Text>
+              </View>
+              <View style={styles.trustItem}>
+                <Ionicons name="checkmark-circle" size={16} color="rgba(255,255,255,0.8)" />
+                <Text style={styles.trustText}>Verified</Text>
+              </View>
+            </View>
           </Animated.View>
         </ScrollView>
       </KeyboardAvoidingView>
@@ -203,77 +240,102 @@ const styles = StyleSheet.create({
   },
   scrollContent: {
     flexGrow: 1,
-    justifyContent: "center",
+    paddingVertical: 40,
   },
   content: {
-    alignItems: "center",
-    paddingHorizontal: 30,
-    paddingVertical: 40,
+    flex: 1,
+    paddingHorizontal: 24,
+  },
+  backButton: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 20,
   },
   header: {
     alignItems: "center",
-    marginBottom: 40,
+    marginBottom: 32,
   },
   iconCircle: {
     width: 80,
     height: 80,
     borderRadius: 40,
-    backgroundColor: 'rgba(139, 92, 246, 0.2)',
+    backgroundColor: COLORS.white,
     justifyContent: 'center',
     alignItems: 'center',
     marginBottom: 20,
-    borderWidth: 2,
-    borderColor: '#8b5cf6',
-  },
-  icon: {
-    fontSize: 40,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.2,
+    shadowRadius: 8,
+    elevation: 6,
   },
   title: {
     fontSize: 32,
     fontWeight: "bold",
-    color: "#ffffcc",
+    color: COLORS.white,
     marginBottom: 8,
     letterSpacing: 0.5,
   },
   subtitle: {
     fontSize: 15,
-    color: "rgba(255, 255, 204, 0.7)",
+    color: "rgba(255, 255, 255, 0.85)",
     textAlign: "center",
   },
-  form: {
-    width: "100%",
-    maxWidth: 400,
+  formCard: {
+    backgroundColor: COLORS.white,
+    borderRadius: 24,
+    padding: 24,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.15,
+    shadowRadius: 16,
+    elevation: 8,
   },
   inputContainer: {
     marginBottom: 20,
   },
   inputLabel: {
-    color: "#ffffcc",
+    color: COLORS.text,
     fontSize: 14,
     fontWeight: "600",
     marginBottom: 8,
-    marginLeft: 4,
   },
   input: {
-    width: "100%",
-    backgroundColor: "rgba(139, 92, 246, 0.15)",
+    backgroundColor: '#F9FAFB',
     borderWidth: 1,
-    borderColor: "#8b5cf6",
-    padding: 15,
+    borderColor: COLORS.border,
+    padding: 16,
     borderRadius: 12,
-    color: "#ffffcc",
-    fontSize: 16,
+    color: COLORS.text,
+    fontSize: 15,
+  },
+  passwordContainer: {
+    position: 'relative',
+  },
+  passwordInput: {
+    paddingRight: 50,
+  },
+  eyeIcon: {
+    position: 'absolute',
+    right: 16,
+    top: 16,
   },
   button: {
-    backgroundColor: "#ffffcc",
+    backgroundColor: COLORS.primary,
     paddingVertical: 16,
     borderRadius: 12,
     alignItems: "center",
-    marginTop: 10,
-    marginBottom: 20,
-    shadowColor: "#8b5cf6",
+    justifyContent: 'center',
+    flexDirection: 'row',
+    gap: 8,
+    marginTop: 8,
+    shadowColor: COLORS.primary,
     shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.4,
+    shadowOpacity: 0.3,
     shadowRadius: 8,
     elevation: 6,
   },
@@ -281,26 +343,37 @@ const styles = StyleSheet.create({
     opacity: 0.7,
   },
   buttonText: {
-    color: "#2d1b4e",
+    color: COLORS.white,
     fontWeight: "bold",
-    fontSize: 18,
+    fontSize: 17,
+  },
+  linkContainer: {
+    marginTop: 20,
+    alignItems: 'center',
   },
   link: {
     textAlign: "center",
-    color: "rgba(255, 255, 204, 0.8)",
-    fontSize: 15,
+    color: COLORS.textLight,
+    fontSize: 14,
   },
   linkBold: {
     fontWeight: "bold",
-    color: "#ffffcc",
+    color: COLORS.primary,
   },
-  backButton: {
-    marginTop: 20,
-    paddingVertical: 10,
+  trustContainer: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    gap: 24,
+    marginTop: 32,
   },
-  backText: {
-    color: "rgba(255, 255, 204, 0.7)",
-    fontSize: 15,
-    textAlign: "center",
+  trustItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  trustText: {
+    color: 'rgba(255, 255, 255, 0.85)',
+    fontSize: 12,
+    fontWeight: '600',
   },
 });
